@@ -303,6 +303,65 @@ func Current() Spec {
 				Size:   5990,
 				SHA256: "b2ed2fd344e8ddbf2e0c83113bd40fa1853438be61a0ff20af5acd187c07cbf6",
 			}},
+		}, {
+			Name:    "Android NDK",
+			Version: "29.0.14206865",
+			Dir:     "ndk29",
+			Format:  TarXZ,
+			SHA256:  "b8212777164944f1a4c4aa8501fee5d584f31dd7db6e68a2517cdd642d63447a",
+			Prefix:  "android-ndk-r29",
+			Parts: []Part{{
+				Path:   "payload/ndk29/android-ndk-r29-linux-amd64.tar.xz.part-000",
+				Size:   94211208,
+				SHA256: "b8212777164944f1a4c4aa8501fee5d584f31dd7db6e68a2517cdd642d63447a",
+			}},
+			Probes: []Probe{{
+				Path:    "toolchains/llvm/prebuilt/linux-x86_64/bin/clang",
+				Args:    []string{"--version"},
+				Want:    []string{"clang version 21.0.0", "Target: x86_64"},
+				Machine: ELFAMD64,
+			}, {
+				Path:    "toolchains/llvm/prebuilt/linux-x86_64/bin/ld.lld",
+				Args:    []string{"--version"},
+				Want:    []string{"LLD 21.0.0"},
+				Machine: ELFAMD64,
+			}, {
+				Path:    "toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar",
+				Args:    []string{"--version"},
+				Want:    []string{"LLVM version 21.0.0"},
+				Machine: ELFAMD64,
+			}, {
+				Path:    "ndk-build",
+				Args:    []string{"--version"},
+				Want:    []string{"GNU Make 4.3"},
+				Machine: Script,
+			}},
+			Files: []FileCheck{{
+				Path:   "source.properties",
+				Size:   107,
+				SHA256: "716f3518a923198cfab037abb32dc3f1b1f7e9a9dcdcda6b66be5906215d2658",
+				Want:   []string{"Pkg.Revision = 29.0.14206865"},
+			}, {
+				Path:   "prebuilt/linux-x86_64/bin/make",
+				Size:   210728,
+				SHA256: "ee92765a5dc7556669fd3e7f9fc58c7ba960523d2131052c9b760f5d1a2fc29d",
+			}, {
+				Path:   "toolchains/llvm/prebuilt/linux-x86_64/lib/libxml2.so.2",
+				Size:   1502296,
+				SHA256: "b9858e922ae6ad101745947775c37c39b3d57b46256a5668ffbab780e627cf70",
+			}, {
+				Path:   "toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/include/aarch64-linux-android/asm/types.h",
+				Size:   204,
+				SHA256: "4b8d02254d1d5ee1b7eb6ee962a63a935330799c14eaf07f93698c2cf8e59e2a",
+			}, {
+				Path:   "toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/35/crtbegin_dynamic.o",
+				Size:   3896,
+				SHA256: "7ace808410683717e8d85edfcb0d3cd1e1175e338cacc8e19c555a80060d5326",
+			}, {
+				Path:   "toolchains/llvm/prebuilt/linux-x86_64/lib/clang/21/lib/linux/libclang_rt.builtins-aarch64-android.a",
+				Size:   515368,
+				SHA256: "670aa9076a57337dc8b12f4249464bb6b4e19784ae9462cd431710850d3e5ee2",
+			}},
 		}},
 	}
 }
