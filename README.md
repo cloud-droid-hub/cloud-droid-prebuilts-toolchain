@@ -18,7 +18,7 @@
 
 ## 当前分支状态
 
-`linux-amd64`已发布Go 1.26.8、Temurin JDK 21.0.12.1+1和LLVM 19.1.7，其它两项按计划继续逐项加入。当前目录只会安装已登记且已完成摘要、版本与ELF架构验证的工具，不会切换到系统程序。
+`linux-amd64`已发布Go 1.26.8、Temurin JDK 21.0.12.1+1、LLVM 19.1.7和Ubuntu 26.04 LLVM 22.1.2；NDK按计划继续加入。当前目录只会安装已登记且已完成摘要、版本与ELF架构验证的工具，不会切换到系统程序。
 
 本分支将依次发布Go 1.26.8、Temurin JDK 21.0.12.1+1、LLVM 19.1.7、Ubuntu 26.04 LLVM 22.1.2和裁剪后的NDK r29。NDK只保留Android arm64目标输入及Linux amd64宿主必需的Clang/LLD 21程序。
 
@@ -32,6 +32,9 @@
 "$PWD/output/linux-amd64/llvm19/bin/clang" --version
 "$PWD/output/linux-amd64/llvm19/bin/ld.lld" --version
 "$PWD/output/linux-amd64/llvm19/bin/llvm-ar" --version
+"$PWD/output/linux-amd64/llvm22/bin/clang" --version
+"$PWD/output/linux-amd64/llvm22/bin/ld.lld" --version
+"$PWD/output/linux-amd64/llvm22/bin/llvm-ar" --version
 ```
 
-版本输出应分别包含`go version go1.26.8 linux/amd64`、`Temurin-21.0.12.1+1`和LLVM 19.1.7对应的版本标识。主仓本地入口与Docker入口会在三个宿主分支内容全部发布后接入。
+版本输出应分别包含`go version go1.26.8 linux/amd64`、`Temurin-21.0.12.1+1`、LLVM 19.1.7和Ubuntu LLVM 22.1.2对应的版本标识。主仓本地入口与Docker入口会在三个宿主分支内容全部发布后接入。

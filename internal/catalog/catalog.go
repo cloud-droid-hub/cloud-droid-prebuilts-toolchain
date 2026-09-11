@@ -250,6 +250,59 @@ func Current() Spec {
 				Size:   3067,
 				SHA256: "ee746b96cfa5be73c3ea3e4cfb1285e9b315d4c9267f99b2ee9c5d911d9fe3f4",
 			}},
+		}, {
+			Name:    "LLVM 22",
+			Version: "22.1.2",
+			Dir:     "llvm22",
+			Format:  TarXZ,
+			SHA256:  "d7086a1d1cc27941f7cd5d9f732220316cb7cd5d056f52e15616abb204d25805",
+			Prefix:  "llvm-22.1.2-linux-amd64",
+			Parts: []Part{{
+				Path:   "payload/llvm22/llvm-22.1.2-linux-amd64.tar.xz.part-000",
+				Size:   83731000,
+				SHA256: "d7086a1d1cc27941f7cd5d9f732220316cb7cd5d056f52e15616abb204d25805",
+			}},
+			Probes: []Probe{{
+				Path:    "bin/clang",
+				Args:    []string{"--version"},
+				Want:    []string{"Ubuntu clang version 22.1.2", "Target: x86_64"},
+				Machine: ELFAMD64,
+			}, {
+				Path:    "bin/ld.lld",
+				Args:    []string{"--version"},
+				Want:    []string{"Ubuntu LLD 22.1.2"},
+				Machine: ELFAMD64,
+			}, {
+				Path:    "bin/llvm-ar",
+				Args:    []string{"--version"},
+				Want:    []string{"Ubuntu LLVM version 22.1.2"},
+				Machine: ELFAMD64,
+			}},
+			Files: []FileCheck{{
+				Path:   "bin/clang",
+				Size:   171785,
+				SHA256: "8c306ec371cbb1f70fbc375828bbc4e0ff346118521bbecbe712f97634ac9e25",
+			}, {
+				Path:   "bin/lld",
+				Size:   6648025,
+				SHA256: "bb018b22a28418e451b850b8965c2b4a276abf74359212ada6a273f645aa454f",
+			}, {
+				Path:   "bin/llvm-ar",
+				Size:   95569,
+				SHA256: "9228de1e34aa7ccd408441f71a56e406a5c30c991922807bae7b5bc95e955a4d",
+			}, {
+				Path:   "lib/cdh/libclang-cpp.so.22.1",
+				Size:   62456224,
+				SHA256: "62e6bdf5bf5b58a697ca643b547f24e1e988388474ff59580e9c58cd27def336",
+			}, {
+				Path:   "lib/cdh/LICENSES/PACKAGES.md",
+				Size:   5018,
+				SHA256: "5e84e0abd2d9ce4727ae44ddff2abbb3ea66945cf8ba787f40f1d518f368f342",
+			}, {
+				Path:   "lib/cdh/LICENSES/llvm-copyright",
+				Size:   5990,
+				SHA256: "b2ed2fd344e8ddbf2e0c83113bd40fa1853438be61a0ff20af5acd187c07cbf6",
+			}},
 		}},
 	}
 }

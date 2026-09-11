@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"debug/elf"
 	"encoding/hex"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -251,7 +252,7 @@ func javaEnv() []string {
 
 func TestLLVM19(t *testing.T) {
 	spec := catalog.Current()
-	if len(spec.Archives) != 3 {
+	if len(spec.Archives) < 3 {
 		t.Fatalf("archives=%d", len(spec.Archives))
 	}
 	archive := spec.Archives[2]
@@ -397,6 +398,242 @@ func TestLLVM19(t *testing.T) {
 		}
 		program := filepath.Join(probe, item.name)
 		output, err := exec.Command(filepath.Join(root, "bin", item.tool), "-fuse-ld=lld", "-nostdlib", "-no-pie", "-Wl,-e,_start", source, "-o", program).CombinedOutput()
+		if err != nil {
+			t.Fatalf("%s link: %v: %s", item.name, err, output)
+		}
+		binary, err := elf.Open(program)
+		if err != nil {
+			t.Fatal(err)
+		}
+		machine := binary.Machine
+		kind := binary.Type
+		if err := binary.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if machine != elf.EM_X86_64 || kind != elf.ET_EXEC {
+			t.Fatalf("%s machine=%v type=%v", item.name, machine, kind)
+		}
+	}
+}
+
+func TestLLVM22(t *testing.T) {
+	spec := catalog.Current()
+	if len(spec.Archives) < 4 {
+		t.Fatalf("archives=%d", len(spec.Archives))
+	}
+	archive := spec.Archives[3]
+	if archive.Name != "LLVM 22" || archive.Version != "22.1.2" || archive.Dir != "llvm22" {
+		t.Fatalf("archive=%+v", archive)
+	}
+	work, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo := filepath.Dir(work)
+	for _, item := range []struct {
+		name string
+		want string
+	}{
+		{name: "PACKAGES.md", want: "5e84e0abd2d9ce4727ae44ddff2abbb3ea66945cf8ba787f40f1d518f368f342"},
+		{name: "libbrotli-copyright", want: "24a64e5bb83d0960d1835696a1e23c0896ad6055b0ca47c66ab0eb9a766324b1"},
+		{name: "libcurl-copyright", want: "b36986270d288caa9f7c44876802de7a491139f3903dcb6356707ece08e1df4a"},
+		{name: "libedit-copyright", want: "2b53671050f6319be6fcdcafa434e8ccb8af629359b4afc83185867204f3927d"},
+		{name: "libffi-copyright", want: "25ee86cfccc2b7eb9a156a127f1e1b38c46c231f516ff201912223eaf62ee186"},
+		{name: "libgnutls-copyright", want: "b32655aad8bb1530de36933f8702af1e669fabb9bf3e712c533803c7092d77da"},
+		{name: "libgssapi-copyright", want: "936728f4181718f42951b881c1e8f1386bf6b2723c4fbc533c374d6f42c71816"},
+		{name: "libhogweed-copyright", want: "344396197142cd506468b20029ea5722d507c980129bb3db4af02424ed6f39c6"},
+		{name: "libidn2-copyright", want: "a63ceb8fab281177da9a27403f0be7ae69aa6f33bf6f63c455ecc587ca131268"},
+		{name: "libk5crypto-copyright", want: "936728f4181718f42951b881c1e8f1386bf6b2723c4fbc533c374d6f42c71816"},
+		{name: "libkeyutils-copyright", want: "73f5682b0466f41cea2b9b7f1ff8a8052464f6c09fb29eeac4490512af09bd50"},
+		{name: "libkrb5-copyright", want: "936728f4181718f42951b881c1e8f1386bf6b2723c4fbc533c374d6f42c71816"},
+		{name: "libkrb5support-copyright", want: "936728f4181718f42951b881c1e8f1386bf6b2723c4fbc533c374d6f42c71816"},
+		{name: "libldap-copyright", want: "2656a8ac4f2fda614be8fe6fd7f649665a6ca3abcf19f6ac125e2ff165b60939"},
+		{name: "libnettle-copyright", want: "344396197142cd506468b20029ea5722d507c980129bb3db4af02424ed6f39c6"},
+		{name: "libnghttp2-copyright", want: "a4d7f9d9d350e7f89aa0688cea74838f33147462d68a3542290387101bf4f274"},
+		{name: "libp11-kit-copyright", want: "a5611fbad151d1fa0aa484f6c393a5166af33ce9a9783dfb2712d6b87b462b37"},
+		{name: "libpfm-copyright", want: "ef51ef5cf53a26a1eda506137c5864156c52724da7d9d8cae3c9903c7ef43e28"},
+		{name: "libpsl-copyright", want: "bbafb0cf52d34465fc69f5ffd22d724224f6a2f28402c88b045c69d88af06aaf"},
+		{name: "librtmp-copyright", want: "2aa6df2ec29edf3e26571e89bda27f0c3a3f187cdf08f75dcc6a7ce32d236824"},
+		{name: "libsasl2-copyright", want: "ddb128a81d3a140ef5b3574ae000a1a50d0cb9a2ec59917121a155f91b670166"},
+		{name: "libssh2-copyright", want: "fb5d6b7a53710b6ba04e412a016d222a3e56b9d6e1a2572a8ffc2eae05e6acfb"},
+		{name: "libtasn1-copyright", want: "722a2780f3f3865c8bed997b8a6283eebf302c9fe4a5b2fb5fd221ea9a51a5a6"},
+		{name: "libunistring-copyright", want: "a585cd2cc2a5fcb8e58f12c7a710a35e06e5b897c59cd5ae4a7d835f0b49eae3"},
+		{name: "libxml2-copyright", want: "ee746b96cfa5be73c3ea3e4cfb1285e9b315d4c9267f99b2ee9c5d911d9fe3f4"},
+		{name: "libz3-copyright", want: "807f874c81a0dbce7d4e32b1a4e1ef1e094b9a3fe8579f34e60fda4f2077289c"},
+		{name: "llvm-copyright", want: "b2ed2fd344e8ddbf2e0c83113bd40fa1853438be61a0ff20af5acd187c07cbf6"},
+	} {
+		pathName := filepath.Join(repo, "licenses", "llvm22", item.name)
+		data, err := os.ReadFile(pathName)
+		if err != nil {
+			t.Fatal(err)
+		}
+		sum := sha256.Sum256(data)
+		if got := hex.EncodeToString(sum[:]); got != item.want {
+			t.Fatalf("%s SHA-256=%s", item.name, got)
+		}
+		info, err := os.Stat(pathName)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.Mode().Perm() != 0o644 {
+			t.Fatalf("%s mode=%#o", item.name, info.Mode().Perm())
+		}
+	}
+	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
+		return
+	}
+	spec.Archives = []catalog.Archive{archive}
+	dest := filepath.Join(t.TempDir(), "tools")
+	if err := install.Run(context.Background(), repo, dest, spec); err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.Join(dest, "llvm22")
+	hostLibs := map[string]bool{
+		"ld-linux-x86-64.so.2": true,
+		"libbsd.so.0":          true,
+		"libc.so.6":            true,
+		"libcom_err.so.2":      true,
+		"libcrypto.so.3":       true,
+		"libgcc_s.so.1":        true,
+		"libgmp.so.10":         true,
+		"libm.so.6":            true,
+		"libmd.so.0":           true,
+		"libresolv.so.2":       true,
+		"libssl.so.3":          true,
+		"libstdc++.so.6":       true,
+		"libtinfo.so.6":        true,
+		"libz.so.1":            true,
+		"libzstd.so.1":         true,
+	}
+	err = filepath.Walk(root, func(pathName string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		mode := info.Mode()
+		if mode.IsDir() && mode.Perm() != 0o755 {
+			t.Errorf("directory mode=%#o path=%s", mode.Perm(), pathName)
+		}
+		if mode.IsRegular() && mode.Perm() != 0o644 && mode.Perm() != 0o755 {
+			t.Errorf("file mode=%#o path=%s", mode.Perm(), pathName)
+		}
+		if !mode.IsRegular() {
+			return nil
+		}
+		binary, openErr := elf.Open(pathName)
+		if openErr != nil {
+			return nil
+		}
+		libs, libErr := binary.ImportedLibraries()
+		closeErr := binary.Close()
+		if closeErr != nil {
+			return closeErr
+		}
+		if libErr != nil || len(libs) == 0 {
+			return nil
+		}
+		output, runErr := exec.Command("ldd", pathName).CombinedOutput()
+		if runErr != nil {
+			return fmt.Errorf("ldd %s: %w: %s", pathName, runErr, output)
+		}
+		if strings.Contains(string(output), "not found") {
+			return fmt.Errorf("missing dependency for %s: %s", pathName, output)
+		}
+		for _, line := range strings.Split(string(output), "\n") {
+			fields := strings.Fields(line)
+			if len(fields) >= 3 && fields[1] == "=>" && strings.HasPrefix(fields[2], "/") &&
+				!strings.HasPrefix(fields[2], root+string(filepath.Separator)) && !hostLibs[fields[0]] {
+				return fmt.Errorf("unexpected host dependency for %s: %s", pathName, fields[0])
+			}
+			if len(fields) >= 2 && strings.HasPrefix(fields[0], "/") &&
+				!strings.HasPrefix(fields[0], root+string(filepath.Separator)) && !hostLibs[filepath.Base(fields[0])] {
+				return fmt.Errorf("unexpected host dependency for %s: %s", pathName, fields[0])
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range []struct {
+		name string
+		want string
+	}{
+		{name: "clang", want: "Ubuntu clang version 22.1.2"},
+		{name: "ld.lld", want: "Ubuntu LLD 22.1.2"},
+		{name: "llvm-ar", want: "Ubuntu LLVM version 22.1.2"},
+	} {
+		program := filepath.Join(root, "bin", item.name)
+		output, err := exec.Command(program, "--version").CombinedOutput()
+		if err != nil {
+			t.Fatalf("%s version: %v: %s", item.name, err, output)
+		}
+		if !strings.Contains(string(output), item.want) {
+			t.Fatalf("%s version=%q", item.name, output)
+		}
+		binary, err := elf.Open(program)
+		if err != nil {
+			t.Fatal(err)
+		}
+		machine := binary.Machine
+		if err := binary.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if machine != elf.EM_X86_64 {
+			t.Fatalf("%s machine=%v", item.name, machine)
+		}
+		output, err = exec.Command("ldd", program).CombinedOutput()
+		if err != nil {
+			t.Fatalf("%s ldd: %v: %s", item.name, err, output)
+		}
+		for _, want := range []string{"/lib/cdh/libLLVM.so.22.1", "/lib/cdh/libffi.so.8", "/lib/cdh/libxml2.so.16"} {
+			if !strings.Contains(string(output), want) {
+				t.Fatalf("%s dependencies miss %q: %s", item.name, want, output)
+			}
+		}
+		if item.name == "clang" && !strings.Contains(string(output), "/lib/cdh/libclang-cpp.so.22.1") {
+			t.Fatalf("clang dependencies=%s", output)
+		}
+	}
+	probe := t.TempDir()
+	object := filepath.Join(probe, "probe.o")
+	source := filepath.Join(probe, "probe.c")
+	if err := os.WriteFile(source, []byte("int probe(void) { return 7; }\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	clang := filepath.Join(root, "bin", "clang")
+	output, err := exec.Command(clang, "-c", "-nostdlib", source, "-o", object).CombinedOutput()
+	if err != nil {
+		t.Fatalf("C compile: %v: %s", err, output)
+	}
+	library := filepath.Join(probe, "libprobe.a")
+	ar := filepath.Join(root, "bin", "llvm-ar")
+	output, err = exec.Command(ar, "rcs", library, object).CombinedOutput()
+	if err != nil {
+		t.Fatalf("archive: %v: %s", err, output)
+	}
+	output, err = exec.Command(ar, "t", library).CombinedOutput()
+	if err != nil || strings.TrimSpace(string(output)) != "probe.o" {
+		t.Fatalf("archive members: %v: %s", err, output)
+	}
+	for _, item := range []struct {
+		name string
+		ext  string
+		body string
+		tool string
+		more []string
+	}{
+		{name: "c", ext: ".c", body: "int probe(void); void _start(void) { (void)probe(); }\n", tool: "clang", more: []string{library}},
+		{name: "cc", ext: ".cc", body: "extern \"C\" void _start() {}\n", tool: "clang++"},
+	} {
+		source := filepath.Join(probe, item.name+item.ext)
+		if err := os.WriteFile(source, []byte(item.body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		program := filepath.Join(probe, item.name)
+		args := []string{"-fuse-ld=lld", "-nostdlib", "-no-pie", "-Wl,-e,_start", source}
+		args = append(args, item.more...)
+		args = append(args, "-o", program)
+		output, err := exec.Command(filepath.Join(root, "bin", item.tool), args...).CombinedOutput()
 		if err != nil {
 			t.Fatalf("%s link: %v: %s", item.name, err, output)
 		}
