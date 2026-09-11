@@ -18,9 +18,9 @@
 
 ## 当前分支状态
 
-`linux-arm64`已发布Go 1.26.8、Temurin JDK 21.0.12.1+1、LLVM 19.1.7和Ubuntu 26.04 LLVM 22.1.2，NDK按计划继续加入。当前目录只会安装已登记且已完成摘要、版本与ELF架构验证的工具，不会切换到系统程序。
+`linux-arm64`已发布Go 1.26.8、Temurin JDK 21.0.12.1+1、LLVM 19.1.7、Ubuntu 26.04 LLVM 22.1.2和Android NDK r29目标输入。当前目录只会安装已登记且已完成摘要、版本与ELF架构验证的内容，不会切换到系统程序。
 
-本分支将依次发布Go 1.26.8、Temurin JDK 21.0.12.1+1、LLVM 19.1.7、Ubuntu 26.04 LLVM 22.1.2和裁剪后的NDK r29。NDK只提供Android arm64目标输入，并由同分支LLVM 22执行编译与链接。
+NDK只提供Android arm64目标输入，并由同分支LLVM 22执行编译与链接。它不含Google发布包里的Linux x86_64程序，因此不能把NDK根目录直接交给仍要求`ndk-build`的旧入口。
 
 在本仓根执行：
 
@@ -28,6 +28,9 @@
 ./bin/cdh-toolchain install --repo "$PWD" --dest "$PWD/output/linux-arm64"
 ./bin/cdh-toolchain check --dest "$PWD/output/linux-arm64"
 ./bin/cdh-toolchain select --dest "$PWD/output/linux-arm64" --name llvm22-clang
+./bin/cdh-toolchain select --dest "$PWD/output/linux-arm64" --name llvm22-lld
+./bin/cdh-toolchain select --dest "$PWD/output/linux-arm64" --name ndk-sysroot
+./bin/cdh-toolchain select --dest "$PWD/output/linux-arm64" --name ndk-resource
 "$PWD/output/linux-arm64/go126/bin/go" version
 "$PWD/output/linux-arm64/jdk21/bin/java" -version
 "$PWD/output/linux-arm64/llvm19/bin/clang" --version
@@ -38,4 +41,4 @@
 "$PWD/output/linux-arm64/llvm22/bin/llvm-ar" --version
 ```
 
-版本输出应分别包含`go version go1.26.8 linux/arm64`、`Temurin-21.0.12.1+1`、LLVM 19.1.7以及Ubuntu LLVM 22.1.2。主仓本地入口与Docker入口会在三宿主分支内容全部发布后接入。
+版本输出应分别包含`go version go1.26.8 linux/arm64`、`Temurin-21.0.12.1+1`、LLVM 19.1.7以及Ubuntu LLVM 22.1.2；安装检查还会核对NDK revision `29.0.14206865`。Android编译必须同时使用`select`返回的LLVM 22、NDK sysroot和Clang 21 resource目录，并传入`--target=aarch64-linux-android<API>`、`--rtlib=compiler-rt`及`--ld-path=<selected-ld.lld>`。主仓本地入口与Docker入口会在三个宿主分支发布完成后，于计划Task 5和Task 6接入；接入前不得把本仓探针通过表述为旧入口已经兼容。

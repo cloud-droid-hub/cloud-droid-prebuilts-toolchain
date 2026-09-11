@@ -17,6 +17,7 @@ import (
 
 	"github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/catalog"
 	"github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/install"
+	"github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/selectcfg"
 )
 
 func TestGo126(t *testing.T) {
@@ -628,5 +629,225 @@ func TestLLVM22(t *testing.T) {
 		if machine != elf.EM_AARCH64 || kind != elf.ET_EXEC {
 			t.Fatalf("%s machine=%v type=%v", item.name, machine, kind)
 		}
+	}
+}
+
+func TestNDK29(t *testing.T) {
+	spec := catalog.Current()
+	if len(spec.Archives) != 5 {
+		t.Fatalf("archives=%d", len(spec.Archives))
+	}
+	ndk := spec.Archives[4]
+	if ndk.Name != "Android NDK" || ndk.Version != "29.0.14206865" || ndk.Dir != "ndk29" {
+		t.Fatalf("archive=%+v", ndk)
+	}
+	if !ndk.DataOnly || len(ndk.Probes) != 0 {
+		t.Fatalf("data-only=%v probes=%d", ndk.DataOnly, len(ndk.Probes))
+	}
+	work, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo := filepath.Dir(work)
+	for _, item := range []struct {
+		name string
+		want string
+	}{
+		{name: "NOTICE", want: "faf0dc52cf6ce9ab09a04b0c074a378dd2565ee1ed9bc1179d83793bcdba012e"},
+		{name: "NOTICE.toolchain", want: "789714a9076571c580cf531bdcebec776a4d889c12c3c1108adafc6e4338710a"},
+		{name: "SOURCE.md", want: "44de4e3cf43bea650f6ee2938e9ec332f2d55bf9d3ada455b84a708217b55287"},
+	} {
+		pathName := filepath.Join(repo, "licenses", "ndk29", item.name)
+		data, err := os.ReadFile(pathName)
+		if err != nil {
+			t.Fatal(err)
+		}
+		sum := sha256.Sum256(data)
+		if got := hex.EncodeToString(sum[:]); got != item.want {
+			t.Fatalf("%s SHA-256=%s", item.name, got)
+		}
+		info, err := os.Stat(pathName)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.Mode().Perm() != 0o644 {
+			t.Fatalf("%s mode=%#o", item.name, info.Mode().Perm())
+		}
+	}
+	if runtime.GOOS != "linux" || runtime.GOARCH != "arm64" {
+		return
+	}
+	spec.Archives = []catalog.Archive{spec.Archives[3], ndk}
+	dest := filepath.Join(t.TempDir(), "tools")
+	if err := install.Run(context.Background(), repo, dest, spec); err != nil {
+		t.Fatal(err)
+	}
+	root, err := selectcfg.Resolve(dest, "ndk", spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sysroot, err := selectcfg.Resolve(dest, "ndk-sysroot", spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resource, err := selectcfg.Resolve(dest, "ndk-resource", spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	clang, err := selectcfg.Resolve(dest, "llvm22-clang", spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	clangxx, err := selectcfg.Resolve(dest, "llvm22-clang++", spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lld, err := selectcfg.Resolve(dest, "llvm22-lld", spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range []struct {
+		name string
+		want string
+	}{
+		{name: "NOTICE", want: "faf0dc52cf6ce9ab09a04b0c074a378dd2565ee1ed9bc1179d83793bcdba012e"},
+		{name: "NOTICE.toolchain", want: "789714a9076571c580cf531bdcebec776a4d889c12c3c1108adafc6e4338710a"},
+		{name: "source.properties", want: "716f3518a923198cfab037abb32dc3f1b1f7e9a9dcdcda6b66be5906215d2658"},
+	} {
+		pathName := filepath.Join(root, item.name)
+		data, err := os.ReadFile(pathName)
+		if err != nil {
+			t.Fatal(err)
+		}
+		sum := sha256.Sum256(data)
+		if got := hex.EncodeToString(sum[:]); got != item.want {
+			t.Fatalf("installed %s SHA-256=%s", item.name, got)
+		}
+	}
+	data, err := os.ReadFile(filepath.Join(root, "source.properties"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "Pkg.Revision = 29.0.14206865") {
+		t.Fatalf("source.properties=%q", data)
+	}
+	for _, pathName := range []string{
+		filepath.Join(root, "build"),
+		filepath.Join(root, "meta"),
+		filepath.Join(root, "ndk-build"),
+		filepath.Join(root, "toolchains", "llvm", "prebuilt", "linux-x86_64", "bin"),
+	} {
+		if _, err := os.Lstat(pathName); !os.IsNotExist(err) {
+			t.Fatalf("excluded path=%s err=%v", pathName, err)
+		}
+	}
+	for _, triple := range []string{
+		"arm-linux-androideabi",
+		"i686-linux-android",
+		"riscv64-linux-android",
+		"x86_64-linux-android",
+	} {
+		for _, parent := range []string{
+			filepath.Join(sysroot, "usr", "include"),
+			filepath.Join(sysroot, "usr", "lib"),
+		} {
+			pathName := filepath.Join(parent, triple)
+			if _, err := os.Lstat(pathName); !os.IsNotExist(err) {
+				t.Fatalf("excluded target=%s err=%v", pathName, err)
+			}
+		}
+	}
+	elfCount := 0
+	err = filepath.Walk(root, func(pathName string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		mode := info.Mode()
+		if mode.IsDir() && mode.Perm() != 0o755 {
+			return fmt.Errorf("directory mode=%#o path=%s", mode.Perm(), pathName)
+		}
+		if !mode.IsRegular() {
+			return nil
+		}
+		if mode.Perm() != 0o644 {
+			return fmt.Errorf("file mode=%#o path=%s", mode.Perm(), pathName)
+		}
+		binary, openErr := elf.Open(pathName)
+		if openErr != nil {
+			return nil
+		}
+		elfCount++
+		machine := binary.Machine
+		if closeErr := binary.Close(); closeErr != nil {
+			return closeErr
+		}
+		if machine != elf.EM_AARCH64 {
+			return fmt.Errorf("ELF machine=%v path=%s", machine, pathName)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if elfCount == 0 {
+		t.Fatal("NDK has no target ELF input")
+	}
+	probe := t.TempDir()
+	link := func(tool, source, program string, more ...string) {
+		t.Helper()
+		args := []string{
+			"--target=aarch64-linux-android35",
+			"--sysroot=" + sysroot,
+			"-resource-dir=" + resource,
+			"--rtlib=compiler-rt",
+			"--ld-path=" + lld,
+		}
+		args = append(args, more...)
+		args = append(args, source, "-o", program)
+		output, err := exec.Command(tool, args...).CombinedOutput()
+		if err != nil {
+			t.Fatalf("Android link: %v: %s", err, output)
+		}
+		binary, err := elf.Open(program)
+		if err != nil {
+			t.Fatal(err)
+		}
+		machine := binary.Machine
+		kind := binary.Type
+		section := binary.Section(".interp")
+		if section == nil {
+			binary.Close()
+			t.Fatalf("%s has no interpreter", program)
+		}
+		interp, err := section.Data()
+		if closeErr := binary.Close(); err == nil {
+			err = closeErr
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		if machine != elf.EM_AARCH64 || kind != elf.ET_DYN ||
+			strings.TrimRight(string(interp), "\x00") != "/system/bin/linker64" {
+			t.Fatalf("%s machine=%v type=%v interp=%q", program, machine, kind, interp)
+		}
+	}
+	cSource := filepath.Join(probe, "probe.c")
+	cBody := "unsigned long long divide(unsigned __int128 v) { return v / 7; }\nint main(int n, char **v) { return divide((unsigned)n + (unsigned)v[0][0]) == 0; }\n"
+	if err := os.WriteFile(cSource, []byte(cBody), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	link(clang, cSource, filepath.Join(probe, "probe-c"))
+	ccSource := filepath.Join(probe, "probe.cc")
+	ccBody := "#include <vector>\nint main() { std::vector<int> v{1, 2, 3}; return v.size() == 3 ? 0 : 1; }\n"
+	if err := os.WriteFile(ccSource, []byte(ccBody), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	link(clangxx, ccSource, filepath.Join(probe, "probe-cc"), "--unwindlib=libunwind", "-stdlib=libc++")
+	if mainRoot := os.Getenv("CDH_MAIN_ROOT"); mainRoot != "" {
+		source := filepath.Join(mainRoot, "tools", "android", "getaddrinfo-probe.c")
+		if _, err := os.Stat(source); err != nil {
+			t.Fatal(err)
+		}
+		link(clang, source, filepath.Join(probe, "main-probe"))
 	}
 }
