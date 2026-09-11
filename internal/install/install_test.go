@@ -12,6 +12,7 @@ import (
 	"encoding/hex"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -378,6 +379,43 @@ func TestProbeLink(t *testing.T) {
 	if err := Check(context.Background(), dest, spec); err == nil {
 		t.Fatal("工具目录之外的探针程序未被拒绝")
 	}
+}
+
+func TestProbeArg0(t *testing.T) {
+	program := buildArg0(t)
+	items := []tarItem{
+		{header: tar.Header{Name: "payload/bin/", Typeflag: tar.TypeDir, Mode: 0o755}},
+		{header: tar.Header{Name: "payload/bin/tool", Typeflag: tar.TypeReg, Mode: 0o755, Size: int64(len(program))}, data: string(program)},
+		{header: tar.Header{Name: "payload/bin/mode-link", Typeflag: tar.TypeSymlink, Linkname: "tool", Mode: 0o777}},
+	}
+	spec, repo := makeSpec(t, items)
+	spec.Archives[0].DataOnly = false
+	spec.Archives[0].Probes[0] = catalog.Probe{
+		Path: "bin/mode-link", Want: []string{"go1.26.8", "mode-link"}, Machine: testMachine(),
+	}
+	if err := Run(context.Background(), repo, filepath.Join(t.TempDir(), "tools"), spec); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func buildArg0(t *testing.T) []byte {
+	t.Helper()
+	dir := t.TempDir()
+	source := filepath.Join(dir, "main.go")
+	code := "package main\nimport (\"fmt\"; \"os\"; \"path/filepath\")\nfunc main(){fmt.Println(\"go1.26.8\", filepath.Base(os.Args[0]))}\n"
+	if err := os.WriteFile(source, []byte(code), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	program := filepath.Join(dir, "arg0-bin")
+	output, err := exec.Command("go", "build", "-o", program, source).CombinedOutput()
+	if err != nil {
+		t.Fatalf("build arg0 probe: %v: %s", err, output)
+	}
+	data, err := os.ReadFile(program)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return data
 }
 
 func TestSwapDirs(t *testing.T) {

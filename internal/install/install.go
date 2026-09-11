@@ -136,7 +136,7 @@ func checkAt(ctx context.Context, root string, spec catalog.Spec) error {
 			return fmt.Errorf("toolchain directory is invalid: %s", archiveRoot)
 		}
 		for _, probe := range archive.Probes {
-			program, err := safeExec(archiveRoot, probe.Path)
+			program, arg0, err := safeExec(archiveRoot, probe.Path)
 			if err != nil {
 				return fmt.Errorf("invalid probe for %s: %w", archive.Name, err)
 			}
@@ -144,6 +144,7 @@ func checkAt(ctx context.Context, root string, spec catalog.Spec) error {
 				return fmt.Errorf("probe machine for %s: %w", archive.Name, err)
 			}
 			cmd := exec.CommandContext(ctx, program, probe.Args...)
+			cmd.Args[0] = arg0
 			cmd.Env = mergeEnv(os.Environ(), probe.Env)
 			output, err := cmd.CombinedOutput()
 			if err != nil {
@@ -404,23 +405,23 @@ func safeJoin(root, rel string) (string, error) {
 	return filepath.Join(root, clean), nil
 }
 
-func safeExec(root, rel string) (string, error) {
+func safeExec(root, rel string) (string, string, error) {
 	program, err := safeJoin(root, rel)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	real, err := filepath.EvalSymlinks(program)
 	if err != nil {
-		return "", fmt.Errorf("resolve probe program: %w", err)
+		return "", "", fmt.Errorf("resolve probe program: %w", err)
 	}
 	inside, err := inTreeReal(root, real)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	if !inside {
-		return "", fmt.Errorf("probe program escapes toolchain: %s", rel)
+		return "", "", fmt.Errorf("probe program escapes toolchain: %s", rel)
 	}
-	return real, nil
+	return real, program, nil
 }
 
 func makeParent(root, rel string) error {
