@@ -9,7 +9,7 @@ func TestCatalog(t *testing.T) {
 	if spec.Host != "linux-amd64" {
 		t.Fatalf("host=%q", spec.Host)
 	}
-	if !spec.Ready || len(spec.Archives) != 2 {
+	if !spec.Ready || len(spec.Archives) != 3 {
 		t.Fatalf("ready=%v archives=%d", spec.Ready, len(spec.Archives))
 	}
 	archive := spec.Archives[0]
@@ -18,6 +18,10 @@ func TestCatalog(t *testing.T) {
 	}
 	archive = spec.Archives[1]
 	if archive.Name != "JDK" || archive.Version != "21.0.12.1+1" || archive.Dir != "jdk21" {
+		t.Fatalf("archive=%+v", archive)
+	}
+	archive = spec.Archives[2]
+	if archive.Name != "LLVM 19" || archive.Version != "19.1.7" || archive.Dir != "llvm19" {
 		t.Fatalf("archive=%+v", archive)
 	}
 	if err := Valid(spec); err != nil {
