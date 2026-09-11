@@ -9,8 +9,12 @@ func TestCatalog(t *testing.T) {
 	if spec.Host != "darwin-arm64" {
 		t.Fatalf("host=%q", spec.Host)
 	}
-	if spec.Ready {
-		t.Fatal("初始目录不能提前标为可安装")
+	if !spec.Ready || len(spec.Archives) != 1 {
+		t.Fatalf("ready=%v archives=%d", spec.Ready, len(spec.Archives))
+	}
+	archive := spec.Archives[0]
+	if archive.Name != "Go" || archive.Version != "1.26.8" || archive.Dir != "go126" {
+		t.Fatalf("archive=%+v", archive)
 	}
 	if err := Valid(spec); err != nil {
 		t.Fatal(err)
@@ -45,6 +49,8 @@ func TestBadCatalog(t *testing.T) {
 		{name: "wrong-machine", edit: func(spec *Spec) { spec.Archives[0].Probes[0].Machine = ELFAMD64 }},
 		{name: "no-native", edit: func(spec *Spec) { spec.Archives[0].Probes[0].Machine = Script }},
 		{name: "data-native", edit: func(spec *Spec) { spec.Archives[0].DataOnly = true }},
+		{name: "bad-env", edit: func(spec *Spec) { spec.Archives[0].Probes[0].Env = []string{"BROKEN"} }},
+		{name: "dup-env", edit: func(spec *Spec) { spec.Archives[0].Probes[0].Env = []string{"A=1", "A=2"} }},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

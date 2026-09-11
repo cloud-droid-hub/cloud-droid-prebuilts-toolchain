@@ -40,6 +40,21 @@ func TestInstall(t *testing.T) {
 	}
 }
 
+func TestModuleFence(t *testing.T) {
+	spec, repo := makeSample(t)
+	dest := filepath.Join(t.TempDir(), "tools")
+	if err := Run(context.Background(), repo, dest, spec); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(filepath.Join(dest, "go.mod"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm() != 0o644 {
+		t.Fatalf("go.mod mode=%#o", info.Mode().Perm())
+	}
+}
+
 func TestInstallXZ(t *testing.T) {
 	script := "#!/bin/sh\necho go1.26.8\n"
 	spec, repo := makePack(t, []tarItem{{header: tar.Header{

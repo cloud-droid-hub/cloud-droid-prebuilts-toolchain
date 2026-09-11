@@ -41,6 +41,7 @@ type Probe struct {
 	Path    string
 	Args    []string
 	Want    []string
+	Env     []string
 	Machine Machine
 }
 
@@ -66,7 +67,30 @@ type Spec struct {
 
 // Current returns the directory compiled into this host branch.
 func Current() Spec {
-	return Spec{Host: "darwin-arm64"}
+	return Spec{
+		Host:  "darwin-arm64",
+		Ready: true,
+		Archives: []Archive{{
+			Name:    "Go",
+			Version: "1.26.8",
+			Dir:     "go126",
+			Format:  TarGzip,
+			SHA256:  "a012b25b571bd0138a03dcd25375ceba866fe5ca822f426d2c66a4de56fd3f4b",
+			Strip:   1,
+			Parts: []Part{{
+				Path:   "payload/go126/go1.26.8.darwin-arm64.tar.gz.part-000",
+				Size:   64626620,
+				SHA256: "a012b25b571bd0138a03dcd25375ceba866fe5ca822f426d2c66a4de56fd3f4b",
+			}},
+			Probes: []Probe{{
+				Path:    "bin/go",
+				Args:    []string{"version"},
+				Want:    []string{"go version go1.26.8 darwin/arm64"},
+				Machine: MachARM64,
+				Env:     []string{"GOTOOLCHAIN=local"},
+			}},
+		}},
+	}
 }
 
 // Valid checks structural requirements without reading payload files.
@@ -130,6 +154,17 @@ func Valid(spec Spec) error {
 			}
 			if len(probe.Want) == 0 {
 				return fmt.Errorf("probe has no expected output for %s", archive.Name)
+			}
+			envSeen := make(map[string]struct{}, len(probe.Env))
+			for _, setting := range probe.Env {
+				name, _, ok := strings.Cut(setting, "=")
+				if !ok || name == "" || strings.ContainsRune(setting, 0) {
+					return fmt.Errorf("invalid probe environment for %s", archive.Name)
+				}
+				if _, exists := envSeen[name]; exists {
+					return fmt.Errorf("duplicate probe environment for %s", archive.Name)
+				}
+				envSeen[name] = struct{}{}
 			}
 			switch probe.Machine {
 			case hostMachine:

@@ -13,3 +13,17 @@
 工具链归档以不超过90 MiB的普通Git对象保存。`bin/cdh-toolchain`负责摘要校验、安全展开、宿主架构检查和原子发布。主项目只初始化当前宿主分支，并把展开根放在主仓`output/toolchains/<host>/`；Docker构建从对应Linux分支复制同一份内容。
 
 首个提交只登记已批准设计、约束与实施顺序。各工具链会按独立可验证提交逐项发布，完成状态以各分支实际文件、版本和验证结果为准。
+
+## 当前分支状态
+
+`darwin-arm64`已发布Go 1.26.8，其它四项按计划继续逐项加入。当前目录只会安装已登记且已完成摘要、版本与Mach-O架构验证的工具，不会切换到系统程序。
+
+在本仓根执行：
+
+```sh
+./bin/cdh-toolchain install --repo "$PWD" --dest "$PWD/output/darwin-arm64"
+./bin/cdh-toolchain check --dest "$PWD/output/darwin-arm64"
+"$PWD/output/darwin-arm64/go126/bin/go" version
+```
+
+最后一条当前应输出`go version go1.26.8 darwin/arm64`。主仓本地入口与Docker入口会在三宿主分支内容全部发布后接入。

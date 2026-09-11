@@ -77,6 +77,13 @@ func Run(ctx context.Context, repo, dest string, spec catalog.Spec) error {
 			return fmt.Errorf("install %s: %w", archive.Name, err)
 		}
 	}
+	fence := filepath.Join(next, "go.mod")
+	if err := os.WriteFile(fence, []byte("module cdh.invalid/toolchains\n\ngo 1.26.0\n"), 0o644); err != nil {
+		return fmt.Errorf("write module boundary: %w", err)
+	}
+	if err := os.Chmod(fence, 0o644); err != nil {
+		return fmt.Errorf("set module boundary mode: %w", err)
+	}
 	if err := os.Chmod(next, 0o755); err != nil {
 		return fmt.Errorf("set new toolchain root mode: %w", err)
 	}
@@ -137,6 +144,7 @@ func checkAt(ctx context.Context, root string, spec catalog.Spec) error {
 				return fmt.Errorf("probe machine for %s: %w", archive.Name, err)
 			}
 			cmd := exec.CommandContext(ctx, program, probe.Args...)
+			cmd.Env = mergeEnv(os.Environ(), probe.Env)
 			output, err := cmd.CombinedOutput()
 			if err != nil {
 				return fmt.Errorf("probe %s: %w: %s", archive.Name, err, strings.TrimSpace(string(output)))
@@ -149,6 +157,22 @@ func checkAt(ctx context.Context, root string, spec catalog.Spec) error {
 		}
 	}
 	return nil
+}
+
+func mergeEnv(base, extra []string) []string {
+	keys := make(map[string]struct{}, len(extra))
+	for _, setting := range extra {
+		name, _, _ := strings.Cut(setting, "=")
+		keys[name] = struct{}{}
+	}
+	result := make([]string, 0, len(base)+len(extra))
+	for _, setting := range base {
+		name, _, _ := strings.Cut(setting, "=")
+		if _, replaced := keys[name]; !replaced {
+			result = append(result, setting)
+		}
+	}
+	return append(result, extra...)
 }
 
 func unpack(ctx context.Context, repo, root string, archive catalog.Archive) error {
