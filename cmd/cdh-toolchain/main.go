@@ -11,6 +11,7 @@ import (
 
 	"github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/catalog"
 	"github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/install"
+	"github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/selectcfg"
 )
 
 func main() {
@@ -27,11 +28,39 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return runInstall(args[1:], stdout, stderr)
 	case "check":
 		return runCheck(args[1:], stdout, stderr)
+	case "select":
+		return runSelect(args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "unknown command: %s\n", args[0])
 		usage(stderr)
 		return 2
 	}
+}
+
+func runSelect(args []string, stdout, stderr io.Writer) int {
+	flags := flag.NewFlagSet("select", flag.ContinueOnError)
+	flags.SetOutput(stderr)
+	dest := flags.String("dest", "", "installation root")
+	name := flags.String("name", "", "tool selection name")
+	if err := flags.Parse(args); err != nil {
+		return 2
+	}
+	if flags.NArg() != 0 || *dest == "" || *name == "" {
+		fmt.Fprintln(stderr, "--dest and --name are required; positional arguments are not accepted")
+		return 2
+	}
+	spec := catalog.Current()
+	selected, err := selectcfg.Resolve(*dest, *name, spec)
+	if err != nil {
+		fmt.Fprintf(stderr, "select failed: %v\n", err)
+		return 1
+	}
+	if err := install.Check(context.Background(), *dest, spec); err != nil {
+		fmt.Fprintf(stderr, "select failed: %v\n", err)
+		return 1
+	}
+	fmt.Fprintln(stdout, selected)
+	return 0
 }
 
 func runInstall(args []string, stdout, stderr io.Writer) int {
@@ -76,5 +105,5 @@ func parseArgs(name string, args []string, stderr io.Writer) (string, string, bo
 }
 
 func usage(output io.Writer) {
-	fmt.Fprintln(output, "usage: cdh-toolchain <install|check> --repo DIR --dest DIR")
+	fmt.Fprintln(output, "usage: cdh-toolchain <install|check|select> --repo DIR --dest DIR [--name NAME]")
 }

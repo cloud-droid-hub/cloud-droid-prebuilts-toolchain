@@ -12,6 +12,8 @@
 
 工具链归档以不超过90 MiB的普通Git对象保存。`bin/cdh-toolchain`负责摘要校验、安全展开、宿主架构检查和原子发布。主项目只初始化当前宿主分支，并把展开根放在主仓`output/toolchains/<host>/`；Docker构建从对应Linux分支复制同一份内容。
 
+`cdh-toolchain select`在重新检查完整安装后输出一个明确路径，不修改当前进程环境。可选名称包括`go`、`jdk`、`llvm19`、`llvm22`、`llvm22-clang`、`llvm22-clang++`、`llvm22-lld`、`llvm22-ar`、`ndk`、`ndk-sysroot`与`ndk-resource`；未在当前分支发布的名称会明确失败。
+
 首个提交只登记已批准设计、约束与实施顺序。各工具链会按独立可验证提交逐项发布，完成状态以各分支实际文件、版本和验证结果为准。
 
 ## 当前分支状态
@@ -25,6 +27,7 @@
 ```sh
 ./bin/cdh-toolchain install --repo "$PWD" --dest "$PWD/output/linux-arm64"
 ./bin/cdh-toolchain check --dest "$PWD/output/linux-arm64"
+./bin/cdh-toolchain select --dest "$PWD/output/linux-arm64" --name llvm22-clang
 "$PWD/output/linux-arm64/go126/bin/go" version
 "$PWD/output/linux-arm64/jdk21/bin/java" -version
 "$PWD/output/linux-arm64/llvm19/bin/clang" --version
