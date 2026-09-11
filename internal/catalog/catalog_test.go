@@ -9,11 +9,15 @@ func TestCatalog(t *testing.T) {
 	if spec.Host != "darwin-arm64" {
 		t.Fatalf("host=%q", spec.Host)
 	}
-	if !spec.Ready || len(spec.Archives) != 1 {
+	if !spec.Ready || len(spec.Archives) != 2 {
 		t.Fatalf("ready=%v archives=%d", spec.Ready, len(spec.Archives))
 	}
 	archive := spec.Archives[0]
 	if archive.Name != "Go" || archive.Version != "1.26.8" || archive.Dir != "go126" {
+		t.Fatalf("archive=%+v", archive)
+	}
+	archive = spec.Archives[1]
+	if archive.Name != "JDK" || archive.Version != "21.0.12.1+1" || archive.Dir != "jdk21" {
 		t.Fatalf("archive=%+v", archive)
 	}
 	if err := Valid(spec); err != nil {
@@ -27,6 +31,7 @@ func TestBadCatalog(t *testing.T) {
 		Ready: true,
 		Archives: []Archive{{
 			Name: "Go", Version: "1.26.8", Dir: "go126", Format: TarGzip,
+			Prefix: "payload",
 			SHA256: "0000000000000000000000000000000000000000000000000000000000000000",
 			Parts: []Part{{
 				Path: "payload/go126/go.tar.gz.part-000", Size: 1,
@@ -43,6 +48,7 @@ func TestBadCatalog(t *testing.T) {
 		{name: "bad-sum", edit: func(spec *Spec) { spec.Archives[0].Parts[0].SHA256 = "z" + spec.Archives[0].Parts[0].SHA256[1:] }},
 		{name: "absolute", edit: func(spec *Spec) { spec.Archives[0].Parts[0].Path = "/payload/part" }},
 		{name: "escape", edit: func(spec *Spec) { spec.Archives[0].Parts[0].Path = "../part" }},
+		{name: "bad-prefix", edit: func(spec *Spec) { spec.Archives[0].Prefix = "../payload" }},
 		{name: "no-probes", edit: func(spec *Spec) { spec.Archives[0].Probes = nil }},
 		{name: "empty-want", edit: func(spec *Spec) { spec.Archives[0].Probes[0].Want = nil }},
 		{name: "version-miss", edit: func(spec *Spec) { spec.Archives[0].Probes[0].Want = []string{"go"} }},

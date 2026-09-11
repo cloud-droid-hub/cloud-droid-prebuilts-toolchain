@@ -208,7 +208,7 @@ func unpack(ctx context.Context, repo, root string, archive catalog.Archive) err
 	if err := os.Chmod(target, 0o755); err != nil {
 		return fmt.Errorf("set archive root mode: %w", err)
 	}
-	if err := untar(ctx, reader, target, archive.Strip); err != nil {
+	if err := untar(ctx, reader, target, archive.Prefix); err != nil {
 		return err
 	}
 	if _, err := io.Copy(io.Discard, reader); err != nil {
@@ -226,7 +226,7 @@ func unpack(ctx context.Context, repo, root string, archive catalog.Archive) err
 	return nil
 }
 
-func untar(ctx context.Context, reader io.Reader, root string, strip int) error {
+func untar(ctx context.Context, reader io.Reader, root, prefix string) error {
 	tarReader := tar.NewReader(reader)
 	seen := make(map[string]struct{})
 	nodes := make(map[fileID]string)
@@ -241,7 +241,7 @@ func untar(ctx context.Context, reader io.Reader, root string, strip int) error 
 		if err != nil {
 			return fmt.Errorf("read tar entry: %w", err)
 		}
-		rel, skip, err := stripName(header.Name, strip)
+		rel, skip, err := stripName(header.Name, prefix)
 		if err != nil {
 			return err
 		}
@@ -372,7 +372,7 @@ func trackParents(root, rel string, nodes map[fileID]string) error {
 	return nil
 }
 
-func stripName(name string, strip int) (string, bool, error) {
+func stripName(name, prefix string) (string, bool, error) {
 	if path.IsAbs(name) {
 		return "", false, fmt.Errorf("absolute archive path: %s", name)
 	}
@@ -380,11 +380,13 @@ func stripName(name string, strip int) (string, bool, error) {
 	if clean == ".." || strings.HasPrefix(clean, "../") {
 		return "", false, fmt.Errorf("archive path escapes root: %s", name)
 	}
-	parts := strings.Split(clean, "/")
-	if len(parts) <= strip {
+	if clean == prefix {
 		return "", true, nil
 	}
-	rel := path.Join(parts[strip:]...)
+	if !strings.HasPrefix(clean, prefix+"/") {
+		return "", true, nil
+	}
+	rel := strings.TrimPrefix(clean, prefix+"/")
 	if rel == "." || rel == "" {
 		return "", true, nil
 	}

@@ -495,7 +495,7 @@ func makePack(t *testing.T, entries []tarItem, format catalog.Format) (catalog.S
 			Dir:      "go126",
 			Format:   format,
 			SHA256:   sumHex(data.Bytes()),
-			Strip:    1,
+			Prefix:   "payload",
 			Parts:    parts,
 			Probes:   []catalog.Probe{{Path: "bin/go", Args: []string{"version"}, Want: []string{"go1.26.8"}, Machine: catalog.Script}},
 			DataOnly: true,

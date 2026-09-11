@@ -14,8 +14,11 @@ import (
 	"github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/install"
 )
 
-func TestCurrentGo(t *testing.T) {
+func TestPayloads(t *testing.T) {
 	t.Setenv("GOTOOLCHAIN", "go1.27.0")
+	t.Setenv("JAVA_TOOL_OPTIONS", "-XX:InvalidCDHOption")
+	t.Setenv("_JAVA_OPTIONS", "-XX:InvalidCDHOption")
+	t.Setenv("JDK_JAVA_OPTIONS", "-XX:InvalidCDHOption")
 	work, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
@@ -40,5 +43,28 @@ func TestCurrentGo(t *testing.T) {
 	}
 	if info.Mode().Perm() != 0o755 {
 		t.Fatalf("go mode=%#o", info.Mode().Perm())
+	}
+	t.Setenv("JAVA_TOOL_OPTIONS", "")
+	t.Setenv("_JAVA_OPTIONS", "")
+	t.Setenv("JDK_JAVA_OPTIONS", "")
+	java := filepath.Join(dest, "jdk21", "bin", "java")
+	output, err = exec.Command(java, "-version").CombinedOutput()
+	if err != nil {
+		t.Fatalf("java version: %v: %s", err, output)
+	}
+	if !strings.Contains(string(output), "Temurin-21.0.12.1+1") {
+		t.Fatalf("java version=%q", output)
+	}
+	info, err = os.Stat(java)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm() != 0o755 {
+		t.Fatalf("java mode=%#o", info.Mode().Perm())
+	}
+	for _, name := range []string{"CodeResources", "libjli.dylib", "Info.plist"} {
+		if _, err := os.Lstat(filepath.Join(dest, "jdk21", name)); !os.IsNotExist(err) {
+			t.Fatalf("JDK根含包装文件%s: %v", name, err)
+		}
 	}
 }

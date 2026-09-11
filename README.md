@@ -16,7 +16,7 @@
 
 ## 当前分支状态
 
-`darwin-arm64`已发布Go 1.26.8，其它四项按计划继续逐项加入。当前目录只会安装已登记且已完成摘要、版本与Mach-O架构验证的工具，不会切换到系统程序。
+`darwin-arm64`已发布Go 1.26.8和Temurin JDK 21.0.12.1+1，其它三项按计划继续逐项加入。当前目录只会安装已登记且已完成摘要、版本与Mach-O架构验证的工具，不会切换到系统程序。
 
 在本仓根执行：
 
@@ -24,6 +24,7 @@
 ./bin/cdh-toolchain install --repo "$PWD" --dest "$PWD/output/darwin-arm64"
 ./bin/cdh-toolchain check --dest "$PWD/output/darwin-arm64"
 "$PWD/output/darwin-arm64/go126/bin/go" version
+"$PWD/output/darwin-arm64/jdk21/bin/java" -version
 ```
 
-最后一条当前应输出`go version go1.26.8 darwin/arm64`。主仓本地入口与Docker入口会在三宿主分支内容全部发布后接入。
+版本输出应分别包含`go version go1.26.8 darwin/arm64`和`Temurin-21.0.12.1+1`。主仓本地入口与Docker入口会在三宿主分支内容全部发布后接入。
