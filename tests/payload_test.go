@@ -67,4 +67,28 @@ func TestPayloads(t *testing.T) {
 			t.Fatalf("JDK根含包装文件%s: %v", name, err)
 		}
 	}
+	clang := filepath.Join(dest, "llvm19", "bin", "clang")
+	output, err = exec.Command(clang, "--version").CombinedOutput()
+	if err != nil {
+		t.Fatalf("clang version: %v: %s", err, output)
+	}
+	if !strings.Contains(string(output), "clang version 19.1.7") {
+		t.Fatalf("clang version=%q", output)
+	}
+	lld := filepath.Join(dest, "llvm19", "bin", "ld64.lld")
+	output, err = exec.Command(lld, "--version").CombinedOutput()
+	if err != nil {
+		t.Fatalf("lld version: %v: %s", err, output)
+	}
+	if !strings.Contains(string(output), "LLD 19.1.7") {
+		t.Fatalf("lld version=%q", output)
+	}
+	llvmAr := filepath.Join(dest, "llvm19", "bin", "llvm-ar")
+	output, err = exec.Command(llvmAr, "--version").CombinedOutput()
+	if err != nil {
+		t.Fatalf("llvm-ar version: %v: %s", err, output)
+	}
+	if !strings.Contains(string(output), "LLVM version 19.1.7") {
+		t.Fatalf("llvm-ar version=%q", output)
+	}
 }
