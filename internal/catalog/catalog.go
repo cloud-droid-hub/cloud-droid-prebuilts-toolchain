@@ -45,6 +45,14 @@ type Probe struct {
 	Machine Machine
 }
 
+// FileCheck describes an immutable identity file inside an archive.
+type FileCheck struct {
+	Path   string
+	Size   int64
+	SHA256 string
+	Want   []string
+}
+
 // Archive describes one tool payload.
 type Archive struct {
 	Name     string
@@ -55,6 +63,7 @@ type Archive struct {
 	Prefix   string
 	Parts    []Part
 	Probes   []Probe
+	Files    []FileCheck
 	DataOnly bool
 }
 
@@ -288,6 +297,45 @@ func Current() Spec {
 				Want:    []string{"LLVM version 22.1.8"},
 				Machine: MachARM64,
 			}},
+		}, {
+			Name:    "Android NDK",
+			Version: "29.0.14206865",
+			Dir:     "ndk29",
+			Format:  TarXZ,
+			SHA256:  "d75ac4144a1abcc23e6152fa1389f00a30347b5eefe1dfcd4504d41c8f869cad",
+			Prefix:  "android-ndk-r29",
+			Parts: []Part{{
+				Path:   "payload/ndk29/android-ndk-r29-darwin-arm64.tar.xz.part-000",
+				Size:   65733068,
+				SHA256: "d75ac4144a1abcc23e6152fa1389f00a30347b5eefe1dfcd4504d41c8f869cad",
+			}},
+			Files: []FileCheck{{
+				Path:   "source.properties",
+				Size:   107,
+				SHA256: "716f3518a923198cfab037abb32dc3f1b1f7e9a9dcdcda6b66be5906215d2658",
+				Want:   []string{"Pkg.Revision = 29.0.14206865"},
+			}},
+			Probes: []Probe{{
+				Path:    "toolchains/llvm/prebuilt/darwin-x86_64/bin/clang",
+				Args:    []string{"--version"},
+				Want:    []string{"clang version 21.0.0"},
+				Machine: MachARM64,
+			}, {
+				Path:    "toolchains/llvm/prebuilt/darwin-x86_64/bin/ld.lld",
+				Args:    []string{"--version"},
+				Want:    []string{"LLD 21.0.0"},
+				Machine: MachARM64,
+			}, {
+				Path:    "toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ar",
+				Args:    []string{"--version"},
+				Want:    []string{"LLVM version 21.0.0"},
+				Machine: MachARM64,
+			}, {
+				Path:    "ndk-build",
+				Args:    []string{"--version"},
+				Want:    []string{"GNU Make 4.3"},
+				Machine: Script,
+			}},
 		}},
 	}
 }
@@ -341,11 +389,33 @@ func Valid(spec Spec) error {
 			}
 			partSeen[part.Path] = struct{}{}
 		}
-		if len(archive.Probes) == 0 {
-			return fmt.Errorf("archive has no identity probes: %s", archive.Name)
+		if len(archive.Probes) == 0 && len(archive.Files) == 0 {
+			return fmt.Errorf("archive has no identity checks: %s", archive.Name)
 		}
 		hasVersion := false
 		hasNative := false
+		fileSeen := make(map[string]struct{}, len(archive.Files))
+		for _, file := range archive.Files {
+			if file.Path == "" || path.IsAbs(file.Path) || path.Clean(file.Path) != file.Path ||
+				file.Path == "." || strings.HasPrefix(file.Path, "../") || strings.Contains(file.Path, "\\") {
+				return fmt.Errorf("invalid identity file path for %s", archive.Name)
+			}
+			if file.Size <= 0 || file.Size > MaxPart || !validSum(file.SHA256) {
+				return fmt.Errorf("invalid identity file data for %s", archive.Name)
+			}
+			if _, exists := fileSeen[file.Path]; exists {
+				return fmt.Errorf("duplicate identity file for %s", archive.Name)
+			}
+			fileSeen[file.Path] = struct{}{}
+			for _, want := range file.Want {
+				if want == "" || strings.ContainsRune(want, 0) {
+					return fmt.Errorf("identity file has empty expected text for %s", archive.Name)
+				}
+				if strings.Contains(want, archive.Version) {
+					hasVersion = true
+				}
+			}
+		}
 		for _, probe := range archive.Probes {
 			if probe.Path == "" || path.IsAbs(probe.Path) || path.Clean(probe.Path) != probe.Path ||
 				probe.Path == "." || strings.HasPrefix(probe.Path, "../") || strings.Contains(probe.Path, "\\") {

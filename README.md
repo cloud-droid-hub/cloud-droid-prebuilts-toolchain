@@ -16,7 +16,7 @@
 
 ## 当前分支状态
 
-`darwin-arm64`已发布Go 1.26.8、Temurin JDK 21.0.12.1+1、LLVM 19.1.7和LLVM 22.1.8，NDK按计划继续加入。当前目录只会安装已登记且已完成摘要、版本与Mach-O架构验证的工具，不会切换到系统程序。
+`darwin-arm64`已发布Go 1.26.8、Temurin JDK 21.0.12.1+1、LLVM 19.1.7、LLVM 22.1.8和裁剪后的NDK r29。当前目录只会安装已登记且已完成摘要、版本与Mach-O架构验证的工具，不会切换到系统程序。NDK沿用上游`darwin-x86_64`目录名，其中保留的宿主Mach-O均为单架构arm64。
 
 在本仓根执行：
 
@@ -31,6 +31,9 @@
 "$PWD/output/darwin-arm64/llvm22/bin/clang" --version
 "$PWD/output/darwin-arm64/llvm22/bin/ld64.lld" --version
 "$PWD/output/darwin-arm64/llvm22/bin/llvm-ar" --version
+"$PWD/output/darwin-arm64/ndk29/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang" --version
+"$PWD/output/darwin-arm64/ndk29/toolchains/llvm/prebuilt/darwin-x86_64/bin/ld.lld" --version
+"$PWD/output/darwin-arm64/ndk29/ndk-build" --version
 ```
 
-版本输出还应分别包含LLVM 19.1.7与22.1.8对应的Clang、LLD和LLVM版本。主仓本地入口与Docker入口会在三宿主分支内容全部发布后接入。
+版本输出还应分别包含LLVM 19.1.7、LLVM 22.1.8和Android Clang/LLD 21.0.0对应版本；NDK的`source.properties`固定记录revision `29.0.14206865`。主仓本地入口与Docker入口会在三宿主分支内容全部发布后接入。

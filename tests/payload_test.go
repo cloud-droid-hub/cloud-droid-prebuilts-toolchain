@@ -5,6 +5,7 @@ package tests
 import (
 	"context"
 	"crypto/sha256"
+	"debug/elf"
 	"debug/macho"
 	"encoding/hex"
 	"os"
@@ -187,4 +188,231 @@ func TestLLVM22(t *testing.T) {
 			t.Fatalf("%s cpu=%v", probe.name, cpu)
 		}
 	}
+}
+
+func TestNDK29(t *testing.T) {
+	spec := catalog.Current()
+	if len(spec.Archives) != 5 {
+		t.Fatalf("archives=%d", len(spec.Archives))
+	}
+	ndk := spec.Archives[4]
+	if ndk.Name != "Android NDK" || ndk.Version != "29.0.14206865" || ndk.Dir != "ndk29" {
+		t.Fatalf("archive=%+v", ndk)
+	}
+	work, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo := filepath.Dir(work)
+	for _, notice := range []struct {
+		name string
+		want string
+	}{
+		{name: "NOTICE", want: "faf0dc52cf6ce9ab09a04b0c074a378dd2565ee1ed9bc1179d83793bcdba012e"},
+		{name: "NOTICE.toolchain", want: "789714a9076571c580cf531bdcebec776a4d889c12c3c1108adafc6e4338710a"},
+	} {
+		pathName := filepath.Join(repo, "licenses", "ndk29", notice.name)
+		data, err := os.ReadFile(pathName)
+		if err != nil {
+			t.Fatal(err)
+		}
+		sum := sha256.Sum256(data)
+		if got := hex.EncodeToString(sum[:]); got != notice.want {
+			t.Fatalf("%s SHA-256=%s", notice.name, got)
+		}
+		info, err := os.Stat(pathName)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.Mode().Perm() != 0o644 {
+			t.Fatalf("%s mode=%#o", notice.name, info.Mode().Perm())
+		}
+	}
+	dest := filepath.Join(t.TempDir(), "tools")
+	spec.Archives = []catalog.Archive{ndk}
+	if err := install.Run(context.Background(), repo, dest, spec); err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.Join(dest, "ndk29")
+	properties, err := os.ReadFile(filepath.Join(root, "source.properties"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantProps := "Pkg.Desc = Android NDK\nPkg.Revision = 29.0.14206865\nPkg.BaseRevision = 29.0.14206865\nPkg.ReleaseName = r29\n"
+	if string(properties) != wantProps {
+		t.Fatalf("source.properties=%q", properties)
+	}
+	host := filepath.Join(root, "toolchains", "llvm", "prebuilt", "darwin-x86_64")
+	for _, rel := range []string{
+		"sysroot/usr/include/aarch64-linux-android",
+		"sysroot/usr/lib/aarch64-linux-android",
+		"lib/clang/21/lib/linux",
+	} {
+		if info, err := os.Stat(filepath.Join(host, rel)); err != nil || !info.IsDir() {
+			t.Fatalf("required directory %s: %v", rel, err)
+		}
+	}
+	for _, triple := range []string{
+		"arm-linux-androideabi",
+		"i686-linux-android",
+		"x86_64-linux-android",
+		"riscv64-linux-android",
+	} {
+		for _, parent := range []string{"sysroot/usr/include", "sysroot/usr/lib"} {
+			pathName := filepath.Join(host, parent, triple)
+			if _, err := os.Lstat(pathName); !os.IsNotExist(err) {
+				t.Fatalf("non-arm64 target path %s: %v", pathName, err)
+			}
+		}
+	}
+	binDir := filepath.Join(host, "bin")
+	entries, err := os.ReadDir(binDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		name := entry.Name()
+		if strings.Contains(name, "linux-android") && !strings.HasPrefix(name, "aarch64-linux-android") {
+			t.Fatalf("non-arm64 target tool=%s", name)
+		}
+		if name == "yasm" || name == "vsyasm" || name == "ytasm" {
+			t.Fatalf("x86 assembler=%s", name)
+		}
+	}
+	resourceLib := filepath.Join(host, "lib", "clang", "21", "lib", "linux")
+	err = filepath.Walk(resourceLib, func(pathName string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		rel, relErr := filepath.Rel(resourceLib, pathName)
+		if relErr != nil {
+			return relErr
+		}
+		inArmDir := strings.HasPrefix(rel, "aarch64"+string(filepath.Separator))
+		if info.Mode().IsRegular() && !inArmDir && !strings.Contains(info.Name(), "aarch64") {
+			t.Errorf("non-arm64 runtime=%s", pathName)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	machCount := 0
+	elfCount := 0
+	err = filepath.Walk(root, func(pathName string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return nil
+		}
+		if info.IsDir() {
+			if info.Mode().Perm() != 0o755 {
+				t.Errorf("directory mode %s=%#o", pathName, info.Mode().Perm())
+			}
+			return nil
+		}
+		if !info.Mode().IsRegular() {
+			t.Errorf("unsupported file %s=%s", pathName, info.Mode())
+			return nil
+		}
+		if mode := info.Mode().Perm(); mode != 0o644 && mode != 0o755 {
+			t.Errorf("file mode %s=%#o", pathName, mode)
+		}
+		if fat, openErr := macho.OpenFat(pathName); openErr == nil {
+			fat.Close()
+			t.Errorf("fat Mach-O=%s", pathName)
+			return nil
+		}
+		if image, openErr := macho.Open(pathName); openErr == nil {
+			machCount++
+			if image.Cpu != macho.CpuArm64 {
+				t.Errorf("Mach-O cpu %s=%v", pathName, image.Cpu)
+			}
+			image.Close()
+		}
+		if image, openErr := elf.Open(pathName); openErr == nil {
+			elfCount++
+			if image.Machine != elf.EM_AARCH64 {
+				t.Errorf("ELF machine %s=%v", pathName, image.Machine)
+			}
+			image.Close()
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if machCount < 3 || elfCount == 0 {
+		t.Fatalf("Mach-O=%d ELF=%d", machCount, elfCount)
+	}
+	probeDir := t.TempDir()
+	for _, probe := range []struct {
+		name string
+		ext  string
+		body string
+	}{
+		{name: "c", ext: ".c", body: "int main(void) { return 0; }\n"},
+		{name: "cc", ext: ".cc", body: "#include <vector>\nint main() { std::vector<int> v{0}; return v[0]; }\n"},
+	} {
+		source := filepath.Join(probeDir, probe.name+probe.ext)
+		program := filepath.Join(probeDir, probe.name)
+		if err := os.WriteFile(source, []byte(probe.body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		tool := filepath.Join(binDir, "aarch64-linux-android35-clang")
+		if probe.ext == ".cc" {
+			tool += "++"
+		}
+		output, err := exec.Command(tool, "-fuse-ld=lld", source, "-o", program).CombinedOutput()
+		if err != nil {
+			t.Fatalf("%s link: %v: %s", probe.name, err, output)
+		}
+		image, err := elf.Open(program)
+		if err != nil {
+			t.Fatalf("%s ELF: %v", probe.name, err)
+		}
+		if image.Machine != elf.EM_AARCH64 || image.Type != elf.ET_DYN {
+			t.Errorf("%s ELF machine=%v type=%v", probe.name, image.Machine, image.Type)
+		}
+		interp := image.Section(".interp")
+		if interp == nil {
+			t.Errorf("%s missing .interp", probe.name)
+		} else if data, readErr := interp.Data(); readErr != nil {
+			t.Errorf("%s .interp: %v", probe.name, readErr)
+		} else if got := strings.TrimRight(string(data), "\x00"); got != "/system/bin/linker64" {
+			t.Errorf("%s interpreter=%q", probe.name, got)
+		}
+		image.Close()
+	}
+	project := filepath.Join(probeDir, "ndk-project")
+	jni := filepath.Join(project, "jni")
+	if err := os.MkdirAll(jni, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	files := map[string]string{
+		"Android.mk":     "LOCAL_PATH := $(call my-dir)\ninclude $(CLEAR_VARS)\nLOCAL_MODULE := ndkprobe\nLOCAL_SRC_FILES := ndkprobe.c\ninclude $(BUILD_EXECUTABLE)\n",
+		"Application.mk": "APP_ABI := arm64-v8a\nAPP_PLATFORM := android-35\n",
+		"ndkprobe.c":     "int main(void) { return 0; }\n",
+	}
+	for name, body := range files {
+		if err := os.WriteFile(filepath.Join(jni, name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cmd := exec.Command(filepath.Join(root, "ndk-build"), "V=1")
+	cmd.Dir = project
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("ndk-build: %v: %s", err, output)
+	}
+	program := filepath.Join(project, "libs", "arm64-v8a", "ndkprobe")
+	image, err := elf.Open(program)
+	if err != nil {
+		t.Fatalf("ndk-build ELF: %v", err)
+	}
+	if image.Machine != elf.EM_AARCH64 || image.Type != elf.ET_DYN {
+		t.Errorf("ndk-build ELF machine=%v type=%v", image.Machine, image.Type)
+	}
+	image.Close()
 }

@@ -41,6 +41,79 @@ func TestInstall(t *testing.T) {
 	}
 }
 
+func TestFileCheck(t *testing.T) {
+	spec, repo := makeSample(t)
+	spec.Archives[0].Files = []catalog.FileCheck{{
+		Path: "README.md", Size: 7, SHA256: sumHex([]byte("sample\n")), Want: []string{"sample"},
+	}}
+	dest := filepath.Join(t.TempDir(), "tools")
+	if err := Run(context.Background(), repo, dest, spec); err != nil {
+		t.Fatal(err)
+	}
+	readme := filepath.Join(dest, "go126", "README.md")
+	if err := os.WriteFile(readme, []byte("tamper\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := Check(context.Background(), dest, spec); err == nil {
+		t.Fatal("changed identity file accepted")
+	}
+}
+
+func TestFileLink(t *testing.T) {
+	spec, repo := makeSample(t)
+	script := []byte("#!/bin/sh\necho go1.26.8\n")
+	spec.Archives[0].Files = []catalog.FileCheck{{
+		Path: "go-link", Size: int64(len("bin/go")), SHA256: sumHex(script), Want: []string{"go1.26.8"},
+	}}
+	dest := filepath.Join(t.TempDir(), "tools")
+	if err := Run(context.Background(), repo, dest, spec); err == nil {
+		t.Fatal("linked identity file accepted")
+	}
+}
+
+func TestFileOnly(t *testing.T) {
+	spec, repo := makeSample(t)
+	script := []byte("#!/bin/sh\necho go1.26.8\n")
+	spec.Archives[0].Probes = nil
+	spec.Archives[0].Files = []catalog.FileCheck{{
+		Path: "bin/go", Size: int64(len(script)), SHA256: sumHex(script), Want: []string{"go1.26.8"},
+	}}
+	dest := filepath.Join(t.TempDir(), "tools")
+	if err := Run(context.Background(), repo, dest, spec); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestFileParent(t *testing.T) {
+	data := "identity\n"
+	entries := probeItems([]tarItem{
+		{header: tar.Header{Name: "payload/meta/", Typeflag: tar.TypeDir, Mode: 0o755}},
+		{header: tar.Header{Name: "payload/meta/id", Typeflag: tar.TypeReg, Mode: 0o644, Size: int64(len(data))}, data: data},
+	})
+	spec, repo := makeSpec(t, entries)
+	spec.Archives[0].Files = []catalog.FileCheck{{
+		Path: "meta/id", Size: int64(len(data)), SHA256: sumHex([]byte(data)), Want: []string{"identity"},
+	}}
+	dest := filepath.Join(t.TempDir(), "tools")
+	if err := Run(context.Background(), repo, dest, spec); err != nil {
+		t.Fatal(err)
+	}
+	meta := filepath.Join(dest, "go126", "meta")
+	if err := os.RemoveAll(meta); err != nil {
+		t.Fatal(err)
+	}
+	outside := t.TempDir()
+	if err := os.WriteFile(filepath.Join(outside, "id"), []byte(data), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, meta); err != nil {
+		t.Fatal(err)
+	}
+	if err := Check(context.Background(), dest, spec); err == nil {
+		t.Fatal("external identity file accepted")
+	}
+}
+
 func TestModuleFence(t *testing.T) {
 	spec, repo := makeSample(t)
 	dest := filepath.Join(t.TempDir(), "tools")

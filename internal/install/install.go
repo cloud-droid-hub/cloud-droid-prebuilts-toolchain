@@ -135,6 +135,44 @@ func checkAt(ctx context.Context, root string, spec catalog.Spec) error {
 		if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 			return fmt.Errorf("toolchain directory is invalid: %s", archiveRoot)
 		}
+		for _, check := range archive.Files {
+			pathName, err := safeJoin(archiveRoot, check.Path)
+			if err != nil {
+				return fmt.Errorf("invalid identity file for %s: %w", archive.Name, err)
+			}
+			realRoot, rootErr := filepath.EvalSymlinks(archiveRoot)
+			realFile, fileErr := filepath.EvalSymlinks(pathName)
+			if rootErr != nil || fileErr != nil || !inTree(realRoot, realFile) {
+				return fmt.Errorf("identity file contains a linked path for %s: %s", archive.Name, check.Path)
+			}
+			info, err := os.Lstat(pathName)
+			if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 || info.Size() != check.Size {
+				return fmt.Errorf("identity file is invalid for %s: %s", archive.Name, check.Path)
+			}
+			file, err := os.Open(pathName)
+			if err != nil {
+				return fmt.Errorf("open identity file for %s: %w", archive.Name, err)
+			}
+			openInfo, statErr := file.Stat()
+			if statErr != nil || !openInfo.Mode().IsRegular() || openInfo.Size() != check.Size || !os.SameFile(info, openInfo) {
+				file.Close()
+				return fmt.Errorf("identity file changed while opening for %s: %s", archive.Name, check.Path)
+			}
+			data, readErr := io.ReadAll(io.LimitReader(file, check.Size+1))
+			closeErr := file.Close()
+			if readErr != nil || closeErr != nil || int64(len(data)) != check.Size {
+				return fmt.Errorf("read identity file for %s: %s", archive.Name, check.Path)
+			}
+			sum := sha256.Sum256(data)
+			if hex.EncodeToString(sum[:]) != check.SHA256 {
+				return fmt.Errorf("identity file checksum mismatch for %s: %s", archive.Name, check.Path)
+			}
+			for _, want := range check.Want {
+				if !strings.Contains(string(data), want) {
+					return fmt.Errorf("identity file for %s misses %q", archive.Name, want)
+				}
+			}
+		}
 		for _, probe := range archive.Probes {
 			program, arg0, err := safeExec(archiveRoot, probe.Path)
 			if err != nil {
