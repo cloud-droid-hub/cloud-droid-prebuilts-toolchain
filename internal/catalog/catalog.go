@@ -76,7 +76,30 @@ type Spec struct {
 
 // Current returns the directory compiled into this host branch.
 func Current() Spec {
-	return Spec{Host: "linux-amd64"}
+	return Spec{
+		Host:  "linux-amd64",
+		Ready: true,
+		Archives: []Archive{{
+			Name:    "Go",
+			Version: "1.26.8",
+			Dir:     "go126",
+			Format:  TarGzip,
+			SHA256:  "d0f743b33e8d8945e6b1f432edd15785c70507121d6e2a723b21285eddf8b57b",
+			Prefix:  "go",
+			Parts: []Part{{
+				Path:   "payload/go126/go1.26.8.linux-amd64.tar.gz.part-000",
+				Size:   66897291,
+				SHA256: "d0f743b33e8d8945e6b1f432edd15785c70507121d6e2a723b21285eddf8b57b",
+			}},
+			Probes: []Probe{{
+				Path:    "bin/go",
+				Args:    []string{"version"},
+				Want:    []string{"go version go1.26.8 linux/amd64"},
+				Machine: ELFAMD64,
+				Env:     []string{"GOTOOLCHAIN=local"},
+			}},
+		}},
+	}
 }
 
 // Valid checks structural requirements without reading payload files.
