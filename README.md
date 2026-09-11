@@ -16,6 +16,16 @@
 
 ## 当前分支状态
 
-`linux-arm64`已建立独立宿主分支，当前只包含仓库规则、实施计划和安装器源码，工具归档尚未发布。目录在首项工具完成验证前保持未就绪，安装命令会明确失败，不会切换到系统程序。
+`linux-arm64`已发布Go 1.26.8，其它四项按计划继续逐项加入。当前目录只会安装已登记且已完成摘要、版本与ELF架构验证的工具，不会切换到系统程序。
 
 本分支将依次发布Go 1.26.8、Temurin JDK 21.0.12.1+1、LLVM 19.1.7、Ubuntu 26.04 LLVM 22.1.2和裁剪后的NDK r29。NDK只提供Android arm64目标输入，并由同分支LLVM 22执行编译与链接。
+
+在本仓根执行：
+
+```sh
+./bin/cdh-toolchain install --repo "$PWD" --dest "$PWD/output/linux-arm64"
+./bin/cdh-toolchain check --dest "$PWD/output/linux-arm64"
+"$PWD/output/linux-arm64/go126/bin/go" version
+```
+
+最后一条当前应输出`go version go1.26.8 linux/arm64`。主仓本地入口与Docker入口会在三宿主分支内容全部发布后接入。
