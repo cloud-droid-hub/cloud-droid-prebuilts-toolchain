@@ -16,7 +16,7 @@
 
 ## 当前分支状态
 
-`linux-arm64`已发布Go 1.26.8和Temurin JDK 21.0.12.1+1，其它三项按计划继续逐项加入。当前目录只会安装已登记且已完成摘要、版本与ELF架构验证的工具，不会切换到系统程序。
+`linux-arm64`已发布Go 1.26.8、Temurin JDK 21.0.12.1+1和LLVM 19.1.7，其它两项按计划继续逐项加入。当前目录只会安装已登记且已完成摘要、版本与ELF架构验证的工具，不会切换到系统程序。
 
 本分支将依次发布Go 1.26.8、Temurin JDK 21.0.12.1+1、LLVM 19.1.7、Ubuntu 26.04 LLVM 22.1.2和裁剪后的NDK r29。NDK只提供Android arm64目标输入，并由同分支LLVM 22执行编译与链接。
 
@@ -27,6 +27,9 @@
 ./bin/cdh-toolchain check --dest "$PWD/output/linux-arm64"
 "$PWD/output/linux-arm64/go126/bin/go" version
 "$PWD/output/linux-arm64/jdk21/bin/java" -version
+"$PWD/output/linux-arm64/llvm19/bin/clang" --version
+"$PWD/output/linux-arm64/llvm19/bin/ld.lld" --version
+"$PWD/output/linux-arm64/llvm19/bin/llvm-ar" --version
 ```
 
-版本输出应分别包含`go version go1.26.8 linux/arm64`与`Temurin-21.0.12.1+1`。主仓本地入口与Docker入口会在三宿主分支内容全部发布后接入。
+版本输出应分别包含`go version go1.26.8 linux/arm64`、`Temurin-21.0.12.1+1`、`clang version 19.1.7`与`LLD 19.1.7`。主仓本地入口与Docker入口会在三宿主分支内容全部发布后接入。

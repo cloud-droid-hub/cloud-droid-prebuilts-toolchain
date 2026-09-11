@@ -126,7 +126,7 @@ func TestGo126(t *testing.T) {
 
 func TestJDK21(t *testing.T) {
 	spec := catalog.Current()
-	if len(spec.Archives) != 2 {
+	if len(spec.Archives) < 2 {
 		t.Fatalf("archives=%d", len(spec.Archives))
 	}
 	archive := spec.Archives[1]
@@ -247,4 +247,149 @@ func javaEnv() []string {
 		}
 	}
 	return result
+}
+
+func TestLLVM19(t *testing.T) {
+	spec := catalog.Current()
+	if len(spec.Archives) < 3 {
+		t.Fatalf("archives=%d", len(spec.Archives))
+	}
+	archive := spec.Archives[2]
+	if archive.Name != "LLVM 19" || archive.Version != "19.1.7" || archive.Dir != "llvm19" {
+		t.Fatalf("archive=%+v", archive)
+	}
+	work, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo := filepath.Dir(work)
+	for _, item := range []struct {
+		name string
+		want string
+	}{
+		{name: "DEPENDENCIES.md", want: "e65df919c78a4a5c43d0b67320f9c90bb785ca881cd19ae668004a426a430222"},
+		{name: "LICENSE.TXT", want: "8d85c1057d742e597985c7d4e6320b015a9139385cff4cbae06ffc0ebe89afee"},
+		{name: "icu-copyright", want: "5bbff5f646ce750ac0a347e7f91793279b7422a1119820b5f75d98879c201c68"},
+		{name: "libxml2-copyright", want: "ee746b96cfa5be73c3ea3e4cfb1285e9b315d4c9267f99b2ee9c5d911d9fe3f4"},
+	} {
+		pathName := filepath.Join(repo, "licenses", "llvm19", item.name)
+		data, err := os.ReadFile(pathName)
+		if err != nil {
+			t.Fatal(err)
+		}
+		sum := sha256.Sum256(data)
+		if got := hex.EncodeToString(sum[:]); got != item.want {
+			t.Fatalf("%s SHA-256=%s", item.name, got)
+		}
+		info, err := os.Stat(pathName)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.Mode().Perm() != 0o644 {
+			t.Fatalf("%s mode=%#o", item.name, info.Mode().Perm())
+		}
+	}
+	if runtime.GOOS != "linux" || runtime.GOARCH != "arm64" {
+		return
+	}
+	spec.Archives = []catalog.Archive{archive}
+	dest := filepath.Join(t.TempDir(), "tools")
+	if err := install.Run(context.Background(), repo, dest, spec); err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.Join(dest, "llvm19")
+	err = filepath.Walk(root, func(pathName string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		mode := info.Mode()
+		if mode.IsDir() && mode.Perm() != 0o755 {
+			t.Errorf("directory mode=%#o path=%s", mode.Perm(), pathName)
+		}
+		if mode.IsRegular() && mode.Perm() != 0o644 && mode.Perm() != 0o755 {
+			t.Errorf("file mode=%#o path=%s", mode.Perm(), pathName)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range []struct {
+		name string
+		want string
+	}{
+		{name: "clang", want: "clang version 19.1.7"},
+		{name: "ld.lld", want: "LLD 19.1.7"},
+		{name: "llvm-ar", want: "LLVM version 19.1.7"},
+	} {
+		program := filepath.Join(root, "bin", item.name)
+		output, err := exec.Command(program, "--version").CombinedOutput()
+		if err != nil {
+			t.Fatalf("%s version: %v: %s", item.name, err, output)
+		}
+		if !strings.Contains(string(output), item.want) {
+			t.Fatalf("%s version=%q", item.name, output)
+		}
+		binary, err := elf.Open(program)
+		if err != nil {
+			t.Fatal(err)
+		}
+		machine := binary.Machine
+		if err := binary.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if machine != elf.EM_AARCH64 {
+			t.Fatalf("%s machine=%v", item.name, machine)
+		}
+		output, err = exec.Command("ldd", program).CombinedOutput()
+		if err != nil {
+			t.Fatalf("%s ldd: %v: %s", item.name, err, output)
+		}
+		if strings.Contains(string(output), "not found") {
+			t.Fatalf("%s dependencies=%q", item.name, output)
+		}
+		if item.name == "ld.lld" {
+			for _, want := range []string{
+				"/lib/cdh/libxml2.so.2",
+				"/lib/cdh/libicuuc.so.74",
+				"/lib/cdh/libicudata.so.74",
+			} {
+				if !strings.Contains(string(output), want) {
+					t.Fatalf("ld.lld dependencies miss %q: %s", want, output)
+				}
+			}
+		}
+	}
+	probe := t.TempDir()
+	for _, item := range []struct {
+		name string
+		ext  string
+		body string
+		tool string
+	}{
+		{name: "c", ext: ".c", body: "void _start(void) {}\n", tool: "clang"},
+		{name: "cc", ext: ".cc", body: "extern \"C\" void _start() {}\n", tool: "clang++"},
+	} {
+		source := filepath.Join(probe, item.name+item.ext)
+		if err := os.WriteFile(source, []byte(item.body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		program := filepath.Join(probe, item.name)
+		output, err := exec.Command(filepath.Join(root, "bin", item.tool), "-fuse-ld=lld", "-nostdlib", "-no-pie", "-Wl,-e,_start", source, "-o", program).CombinedOutput()
+		if err != nil {
+			t.Fatalf("%s link: %v: %s", item.name, err, output)
+		}
+		binary, err := elf.Open(program)
+		if err != nil {
+			t.Fatal(err)
+		}
+		machine := binary.Machine
+		kind := binary.Type
+		if err := binary.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if machine != elf.EM_AARCH64 || kind != elf.ET_EXEC {
+			t.Fatalf("%s machine=%v type=%v", item.name, machine, kind)
+		}
+	}
 }
