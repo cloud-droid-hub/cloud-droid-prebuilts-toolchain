@@ -9,7 +9,7 @@ func TestCatalog(t *testing.T) {
 	if spec.Host != "darwin-arm64" {
 		t.Fatalf("host=%q", spec.Host)
 	}
-	if !spec.Ready || len(spec.Archives) != 3 {
+	if !spec.Ready || len(spec.Archives) != 4 {
 		t.Fatalf("ready=%v archives=%d", spec.Ready, len(spec.Archives))
 	}
 	archive := spec.Archives[0]
@@ -22,6 +22,10 @@ func TestCatalog(t *testing.T) {
 	}
 	archive = spec.Archives[2]
 	if archive.Name != "LLVM 19" || archive.Version != "19.1.7" || archive.Dir != "llvm19" {
+		t.Fatalf("archive=%+v", archive)
+	}
+	archive = spec.Archives[3]
+	if archive.Name != "LLVM 22" || archive.Version != "22.1.8" || archive.Dir != "llvm22" {
 		t.Fatalf("archive=%+v", archive)
 	}
 	if err := Valid(spec); err != nil {
