@@ -1,4 +1,2 @@
-build/
-output/
-.DS_Store
-._*
+/build/
+/output/
