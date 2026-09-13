@@ -3,20 +3,26 @@
 package tests
 
 import (
+	"archive/tar"
+	"bufio"
 	"context"
 	"crypto/sha256"
 	"debug/elf"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/catalog"
 	"github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/install"
+	"github.com/ulikunitz/xz"
 )
 
 func TestGo126(t *testing.T) {
@@ -416,6 +422,63 @@ func TestLLVM19(t *testing.T) {
 	}
 }
 
+func TestLLVM22GLIBC(t *testing.T) {
+	spec := catalog.Current()
+	archive := spec.Archives[3]
+	if len(archive.Parts) != 1 {
+		t.Fatalf("LLVM 22 parts=%d", len(archive.Parts))
+	}
+	work, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	part, err := os.Open(filepath.Join(filepath.Dir(work), filepath.FromSlash(archive.Parts[0].Path)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer part.Close()
+	stream, err := xz.NewReader(bufio.NewReader(part))
+	if err != nil {
+		t.Fatal(err)
+	}
+	versions := regexp.MustCompile(`GLIBC_([0-9]+)\.([0-9]+)`).FindAllSubmatch
+	found := false
+	tars := tar.NewReader(stream)
+	for {
+		header, err := tars.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		if header.Typeflag != tar.TypeReg {
+			continue
+		}
+		data, err := io.ReadAll(tars)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, match := range versions(data, -1) {
+			found = true
+			major, err := strconv.Atoi(string(match[1]))
+			if err != nil {
+				t.Fatal(err)
+			}
+			minor, err := strconv.Atoi(string(match[2]))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if major > 2 || major == 2 && minor > 39 {
+				t.Fatalf("%s requires GLIBC_%d.%d", header.Name, major, minor)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("LLVM 22 GLIBC requirements not found")
+	}
+}
+
 func TestLLVM22(t *testing.T) {
 	spec := catalog.Current()
 	if len(spec.Archives) < 4 {
@@ -434,12 +497,12 @@ func TestLLVM22(t *testing.T) {
 		name string
 		want string
 	}{
-		{name: "PACKAGES.md", want: "5e84e0abd2d9ce4727ae44ddff2abbb3ea66945cf8ba787f40f1d518f368f342"},
+		{name: "PACKAGES.md", want: "0b4f8fb97a0f9b013112f7ba2fee9577deea830306a0cb5598b2c3583686a3d5"},
 		{name: "libbrotli-copyright", want: "24a64e5bb83d0960d1835696a1e23c0896ad6055b0ca47c66ab0eb9a766324b1"},
 		{name: "libcurl-copyright", want: "b36986270d288caa9f7c44876802de7a491139f3903dcb6356707ece08e1df4a"},
 		{name: "libedit-copyright", want: "2b53671050f6319be6fcdcafa434e8ccb8af629359b4afc83185867204f3927d"},
 		{name: "libffi-copyright", want: "25ee86cfccc2b7eb9a156a127f1e1b38c46c231f516ff201912223eaf62ee186"},
-		{name: "libgnutls-copyright", want: "b32655aad8bb1530de36933f8702af1e669fabb9bf3e712c533803c7092d77da"},
+		{name: "libgnutls-copyright", want: "51da5214308b87d6a0a2fbcaea1f7dbd15510be733e5921d9548ff6b88d84dd8"},
 		{name: "libgssapi-copyright", want: "936728f4181718f42951b881c1e8f1386bf6b2723c4fbc533c374d6f42c71816"},
 		{name: "libhogweed-copyright", want: "344396197142cd506468b20029ea5722d507c980129bb3db4af02424ed6f39c6"},
 		{name: "libidn2-copyright", want: "a63ceb8fab281177da9a27403f0be7ae69aa6f33bf6f63c455ecc587ca131268"},
@@ -456,6 +519,7 @@ func TestLLVM22(t *testing.T) {
 		{name: "librtmp-copyright", want: "2aa6df2ec29edf3e26571e89bda27f0c3a3f187cdf08f75dcc6a7ce32d236824"},
 		{name: "libsasl2-copyright", want: "ddb128a81d3a140ef5b3574ae000a1a50d0cb9a2ec59917121a155f91b670166"},
 		{name: "libssh2-copyright", want: "fb5d6b7a53710b6ba04e412a016d222a3e56b9d6e1a2572a8ffc2eae05e6acfb"},
+		{name: "libssl-copyright", want: "6a7da622fe0637a334d2a8fc470852d2ffb77d9a2b2f930f854e32a41ad6ef35"},
 		{name: "libtasn1-copyright", want: "722a2780f3f3865c8bed997b8a6283eebf302c9fe4a5b2fb5fd221ea9a51a5a6"},
 		{name: "libunistring-copyright", want: "a585cd2cc2a5fcb8e58f12c7a710a35e06e5b897c59cd5ae4a7d835f0b49eae3"},
 		{name: "libxml2-copyright", want: "ee746b96cfa5be73c3ea3e4cfb1285e9b315d4c9267f99b2ee9c5d911d9fe3f4"},

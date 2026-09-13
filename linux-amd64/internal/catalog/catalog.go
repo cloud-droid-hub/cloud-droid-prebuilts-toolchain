@@ -255,12 +255,12 @@ func Current() Spec {
 			Version: "22.1.2",
 			Dir:     "llvm22",
 			Format:  TarXZ,
-			SHA256:  "d7086a1d1cc27941f7cd5d9f732220316cb7cd5d056f52e15616abb204d25805",
+			SHA256:  "3f1304acb447b9b6ba061e911a988b9915cae5398afe55cc1b3530d3f02b0688",
 			Prefix:  "llvm-22.1.2-linux-amd64",
 			Parts: []Part{{
 				Path:   "payload/llvm22/llvm-22.1.2-linux-amd64.tar.xz.part-000",
-				Size:   83731000,
-				SHA256: "d7086a1d1cc27941f7cd5d9f732220316cb7cd5d056f52e15616abb204d25805",
+				Size:   77077396,
+				SHA256: "3f1304acb447b9b6ba061e911a988b9915cae5398afe55cc1b3530d3f02b0688",
 			}},
 			Probes: []Probe{{
 				Path:    "bin/clang",
@@ -295,9 +295,25 @@ func Current() Spec {
 				Size:   62456224,
 				SHA256: "62e6bdf5bf5b58a697ca643b547f24e1e988388474ff59580e9c58cd27def336",
 			}, {
+				Path:   "lib/cdh/libedit.so.2.0.72",
+				Size:   228425,
+				SHA256: "1c778cf484d2328f22e284203c88f0954157d1c89385be256a213d0af036caec",
+			}, {
+				Path:   "lib/cdh/libgnutls.so.30.37.1",
+				Size:   2130457,
+				SHA256: "419c7a6646e6524b109302c9c0361f2c6396a3560f0ec6aee7c7dfcca8d4249e",
+			}, {
+				Path:   "lib/cdh/libssl.so.3",
+				Size:   1140753,
+				SHA256: "fc5596cf5f8c9b760e2cc85956331a862fc1235a8809beec4169dacc349087db",
+			}, {
+				Path:   "lib/cdh/libcrypto.so.3",
+				Size:   6560369,
+				SHA256: "bf6f4a415f2dd7484a37da10822f850afed45621478dc23ab7fdbc35cf590347",
+			}, {
 				Path:   "lib/cdh/LICENSES/PACKAGES.md",
-				Size:   5018,
-				SHA256: "5e84e0abd2d9ce4727ae44ddff2abbb3ea66945cf8ba787f40f1d518f368f342",
+				Size:   5269,
+				SHA256: "0b4f8fb97a0f9b013112f7ba2fee9577deea830306a0cb5598b2c3583686a3d5",
 			}, {
 				Path:   "lib/cdh/LICENSES/llvm-copyright",
 				Size:   5990,

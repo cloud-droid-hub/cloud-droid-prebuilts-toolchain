@@ -2,6 +2,8 @@
 
 本目录由仓库唯一`main`分支维护，发布Linux amd64使用的Go 1.26.8、Temurin JDK 21.0.12.1+1、LLVM 19.1.7、Ubuntu 26.04 LLVM 22.1.2和裁剪后的Android NDK r29 revision 29.0.14206865。
 
+LLVM 22归档内的`libedit2`与`libgnutls30t64`固定取自Ubuntu 24.04 LTS，使工具可在glibc 2.39及更新的amd64宿主运行；LLVM程序与其它随附运行库仍来自登记的Ubuntu 26.04软件包。归档同时携带登记的`libssl`与`libcrypto`，不依赖宿主OpenSSL的小版本补齐`libcurl`。
+
 在仓库根执行：
 
 ```sh

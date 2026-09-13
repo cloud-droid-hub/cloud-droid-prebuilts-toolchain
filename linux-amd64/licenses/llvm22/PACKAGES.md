@@ -1,6 +1,6 @@
 # LLVM 22 Linux amd64软件包来源
 
-本归档仅使用Ubuntu 26.04 `resolute`与`resolute-updates`的官方amd64二进制包。包文件由`http://archive.ubuntu.com/ubuntu`对应APT索引取得，版本、大小与SHA-256如下：
+本归档的LLVM 22及其大部分运行库使用Ubuntu 26.04 `resolute`与`resolute-updates`的官方amd64二进制包。`libedit2`与`libgnutls30t64`固定使用Ubuntu 24.04 LTS `noble`版本，使LLVM 22可同时在glibc 2.39和更新宿主上运行；包文件由Ubuntu官方APT索引或其同步镜像取得，版本、大小与SHA-256如下：
 
 | 包 | 版本 | 字节 | SHA-256 |
 | --- | --- | ---: | --- |
@@ -10,9 +10,9 @@
 | `libclang-cpp22` | `1:22.1.2-1ubuntu1` | 14194946 | `77800834c5544ab887397c93856d371a03e3e899e3eee585621b48cf07e86f50` |
 | `libclang1-22` | `1:22.1.2-1ubuntu1` | 8544562 | `6e975db23d9b567384fac8d5e6f78feed2f90be9a5fd38db2db15973ceb1c549` |
 | `libcurl4t64` | `8.18.0-1ubuntu2.5` | 426986 | `ea42d65a232664d310f96da2303038cb4aa4bc8e69df0b33c505e798f644ea79` |
-| `libedit2` | `3.1-20251016-1` | 96920 | `22338fcbcaae99f67ca7b2e20d1730bc29d3c02bcd2414e457f99be96442ee29` |
+| `libedit2` | `3.1-20230828-1build1` | 97586 | `3afbc8ddf835049dd4d88275b9d13680e4c4cdd59e191cbd63424152cc08e00e` |
 | `libffi8` | `3.5.2-4` | 26348 | `4a7423124bbd459c0aa38b7389ec7802fa6899654767a95fc27de70967fedd48` |
-| `libgnutls30t64` | `3.8.12-2ubuntu1.1` | 1028572 | `b08d4e2842cd53dbe1565a46bd11d6f7ecb36bc08b236802ae4da744cae9f691` |
+| `libgnutls30t64` | `3.8.3-1.1ubuntu3.6` | 1002902 | `b8944756260c5ea6b7fac019745f931f905aa7a4df0763676b1b25c911b692e2` |
 | `libgssapi-krb5-2` | `1.22.1-2ubuntu4.1` | 146908 | `d156dd940bff6dec8b6880cd0da4d515398d03d7b2e8b3163a935e701f80aa27` |
 | `libhogweed6t64` | `3.10.2-1` | 200902 | `1c8c808ab24ff3018ac886e3f311edee0f2d4d97d12d3908be52343e89807046` |
 | `libidn2-0` | `2.3.8-4build1` | 67564 | `92bdac0f443a648859d06dee3defb9c96864fd76df6cfe617ca70bb261344767` |
@@ -30,6 +30,7 @@
 | `librtmp1` | `2.4+20151223.gitfa8646d.1-3` | 58970 | `77cbd0ddf7e7487079ec300ff7751322de5e7d67f0f46749591b78ff1442cbe8` |
 | `libsasl2-2` | `2.1.28+dfsg1-9ubuntu3` | 53984 | `11b9b2ce6702d86dd3dea60e08bd15255d7fd9545431a9e555eec47770404de0` |
 | `libssh2-1t64` | `1.11.1-1ubuntu0.26.04.4` | 138284 | `bb3e334dc885d124d38cd4350f1cb4606c03ce58e9f53dc51a84c2c8d11c84e1` |
+| `libssl3t64` | `3.5.5-1ubuntu3.5` | 2362598 | `f62cc56364e417e4d2478c5d6a1d07af0f40625e587dd8dceb96b23b1fa76e07` |
 | `libtasn1-6` | `4.21.0-2` | 45272 | `59c74951324ead0ff77ab945d561feb1b21bc189b793600b8e2b7cf4d39b1ee5` |
 | `libunistring5` | `1.3-2build1` | 610496 | `88c0163f1acb384abde07641b7e13fcaea36e0a3b88fc57a653779fc429fc46a` |
 | `libxml2-16` | `2.15.2+dfsg-0.1ubuntu0.1` | 606124 | `14211c45bb75f9543e6053207533370047873ade7e4c70f7285400f1df6c898f` |
@@ -39,6 +40,6 @@
 | `llvm-22-runtime` | `1:22.1.2-1ubuntu1` | 598128 | `7281a2820449b2cd2eb272962a98ffbb1891e51e2c06ef6209b7239dccace850` |
 | `llvm-22` | `1:22.1.2-1ubuntu1` | 20689684 | `1691c74ab075178ac3ab97fd4d4a61dce980a3bf2c7d825452faf938e69d49a7` |
 
-归档保留九个LLVM包提供的完整`/usr/lib/llvm-22`目录，并附带全目录动态程序在基础`ubuntu:26.04`镜像中实际缺少的共享库及相对符号链接。每类软件的Ubuntu版权文件同时置于本目录和归档内`lib/cdh/LICENSES/`。
+归档保留九个LLVM包提供的完整`/usr/lib/llvm-22`目录，并附带全目录动态程序在基础`ubuntu:24.04`与`ubuntu:26.04`环境中需要的共享库及相对符号链接。每类软件的Ubuntu版权文件同时置于本目录和归档内`lib/cdh/LICENSES/`。
 
-为支持任意安装路径，使用Ubuntu 26.04的patchelf `0.18.0-1.4build1`（106098字节，SHA-256 `dd6cde91e0a77a73335a93a4ce41801f21dac36d2158539093c241e46e11b9fc`）把动态程序的RPATH设为`$ORIGIN/../lib/cdh`，把附带共享库的RPATH设为其相对库目录。干净`ubuntu:26.04` amd64镜像中的最终检查不设置`LD_LIBRARY_PATH`；其余解析项仅来自镜像已有的C/C++运行库、压缩库、终端库与动态加载器。
+为支持任意安装路径，使用Ubuntu 26.04的patchelf `0.18.0-1.4build1`（106098字节，SHA-256 `dd6cde91e0a77a73335a93a4ce41801f21dac36d2158539093c241e46e11b9fc`）把动态程序的RPATH设为`$ORIGIN/../lib/cdh`，把附带共享库的RPATH设为其相对库目录。最终检查不设置`LD_LIBRARY_PATH`；其余解析项仅来自宿主已有的C/C++运行库、压缩库、终端库与动态加载器。
