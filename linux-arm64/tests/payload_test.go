@@ -634,7 +634,7 @@ func TestLLVM22(t *testing.T) {
 
 func TestNDK29(t *testing.T) {
 	spec := catalog.Current()
-	if len(spec.Archives) != 6 {
+	if len(spec.Archives) != 7 {
 		t.Fatalf("archives=%d", len(spec.Archives))
 	}
 	ndk := spec.Archives[4]
@@ -875,7 +875,7 @@ func TestBazel(t *testing.T) {
 		t.Fatalf("Bazel license mode=%#o", info.Mode().Perm())
 	}
 	spec := catalog.Current()
-	if len(spec.Archives) != 6 {
+	if len(spec.Archives) != 7 {
 		t.Fatalf("archives=%d", len(spec.Archives))
 	}
 	bzl := spec.Archives[5]
