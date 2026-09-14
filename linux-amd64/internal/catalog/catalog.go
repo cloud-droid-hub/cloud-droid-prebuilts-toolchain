@@ -378,6 +378,30 @@ func Current() Spec {
 				Size:   515368,
 				SHA256: "670aa9076a57337dc8b12f4249464bb6b4e19784ae9462cd431710850d3e5ee2",
 			}},
+		}, {
+			Name:    "Bazel",
+			Version: "8.5.1",
+			Dir:     "bazel851",
+			Format:  TarXZ,
+			SHA256:  "56a08dd08f3dbad54acae51e8526c514b9f60613f86bff44aaf003cdc6036d2c",
+			Prefix:  "bazel-8.5.1",
+			Parts: []Part{{
+				Path:   "payload/bazel851/bazel-8.5.1-linux-amd64.tar.xz.part-000",
+				Size:   56753736,
+				SHA256: "56a08dd08f3dbad54acae51e8526c514b9f60613f86bff44aaf003cdc6036d2c",
+			}},
+			Files: []FileCheck{{
+				Path:   "LICENSE",
+				Size:   11358,
+				SHA256: "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+				Want:   []string{"Apache License"},
+			}},
+			Probes: []Probe{{
+				Path:    "bin/bazel",
+				Args:    []string{"--version"},
+				Want:    []string{"bazel 8.5.1"},
+				Machine: ELFAMD64,
+			}},
 		}},
 	}
 }
