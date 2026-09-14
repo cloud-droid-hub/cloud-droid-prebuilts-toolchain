@@ -360,6 +360,43 @@ func Current() Spec {
 				Want:    []string{"bazel 8.5.1"},
 				Machine: MachARM64,
 			}},
+		}, {
+			Name:    "Rust",
+			Version: "1.97.1",
+			Dir:     "rust197",
+			Format:  TarXZ,
+			SHA256:  "4b6291ed634a36fc6d008a141261a9e2d1a6e10428d0e9c36ce10d961b9fb74d",
+			Prefix:  "rust-1.97.1",
+			Parts: []Part{{
+				Path:   "payload/rust197/rust-1.97.1-darwin-arm64.tar.xz.part-000",
+				Size:   94371840,
+				SHA256: "c706047175dbde463db3f434c519935de860cb8e599d1dda3c4ae2fb75e9e63b",
+			}, {
+				Path:   "payload/rust197/rust-1.97.1-darwin-arm64.tar.xz.part-001",
+				Size:   45801704,
+				SHA256: "c4cdf6be1d624c2befa4ecc85121762c1739fb06d0f1ab3244cf9bc9636a169b",
+			}},
+			Files: []FileCheck{{
+				Path:   "lib/rustlib/aarch64-linux-android/lib/libcore-61c2b492ae6a25f6.rlib",
+				Size:   3155262,
+				SHA256: "d9e177b04f5afc9874a5ea8359c1912fcbc21723c82486dfee6770062eb7296b",
+			}},
+			Probes: []Probe{{
+				Path:    "bin/rustc",
+				Args:    []string{"-vV"},
+				Want:    []string{"release: 1.97.1", "LLVM version: 22.1.6"},
+				Machine: MachARM64,
+			}, {
+				Path:    "bin/cargo",
+				Args:    []string{"-V"},
+				Want:    []string{"cargo 1.97.1"},
+				Machine: MachARM64,
+			}, {
+				Path:    "bin/rustdoc",
+				Args:    []string{"--version"},
+				Want:    []string{"rustdoc 1.97.1"},
+				Machine: MachARM64,
+			}},
 		}},
 	}
 }

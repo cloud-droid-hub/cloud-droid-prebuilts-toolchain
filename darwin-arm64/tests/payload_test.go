@@ -474,3 +474,89 @@ func TestBazel(t *testing.T) {
 		t.Fatalf("bazel mode=%#o", info.Mode().Perm())
 	}
 }
+
+func TestRust197(t *testing.T) {
+	work, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo := filepath.Dir(work)
+	licenses := []struct {
+		name string
+		sum  string
+	}{
+		{name: "COPYRIGHT", sum: "172020dbfd5b53a226dfde77616190a48dcff519b0bc0e6deb91a8450782c4af"},
+		{name: "LICENSE-APACHE", sum: "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"},
+		{name: "LICENSE-MIT", sum: "b71bd43a069ca0641a9ecfe585ca7b3c53b5cc1608f8b68321168698e28b5ea1"},
+	}
+	for _, item := range licenses {
+		name := filepath.Join(repo, "licenses", "rust", item.name)
+		data, err := os.ReadFile(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		sum := sha256.Sum256(data)
+		if got := hex.EncodeToString(sum[:]); got != item.sum {
+			t.Fatalf("%s SHA-256=%s", item.name, got)
+		}
+		info, err := os.Stat(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.Mode().Perm() != 0o644 {
+			t.Fatalf("%s mode=%#o", item.name, info.Mode().Perm())
+		}
+	}
+	spec := catalog.Current()
+	if len(spec.Archives) != 7 {
+		t.Fatalf("archives=%d", len(spec.Archives))
+	}
+	rust := spec.Archives[6]
+	if rust.Name != "Rust" || rust.Version != "1.97.1" || rust.Dir != "rust197" {
+		t.Fatalf("archive=%+v", rust)
+	}
+	spec.Archives = []catalog.Archive{rust}
+	dest := filepath.Join(t.TempDir(), "tools")
+	if err := install.Run(context.Background(), repo, dest, spec); err != nil {
+		t.Fatal(err)
+	}
+	rustc := filepath.Join(dest, "rust197", "bin", "rustc")
+	output, err := exec.Command(rustc, "-vV").CombinedOutput()
+	if err != nil {
+		t.Fatalf("rustc version: %v: %s", err, output)
+	}
+	if !strings.Contains(string(output), "release: 1.97.1") ||
+		!strings.Contains(string(output), "LLVM version: 22.1.6") {
+		t.Fatalf("rustc version=%q", output)
+	}
+	probe := t.TempDir()
+	source := filepath.Join(probe, "probe.rs")
+	body := "fn main() { println!(\"42\"); }\n"
+	if err := os.WriteFile(source, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	program := filepath.Join(probe, "probe")
+	output, err = exec.Command(rustc, source, "-o", program).CombinedOutput()
+	if err != nil {
+		t.Fatalf("rustc host compile: %v: %s", err, output)
+	}
+	output, err = exec.Command(program).CombinedOutput()
+	if err != nil || strings.TrimSpace(string(output)) != "42" {
+		t.Fatalf("rust host run: %v: %q", err, output)
+	}
+	object := filepath.Join(probe, "android.o")
+	output, err = exec.Command(rustc, "--target", "aarch64-linux-android", "--crate-type=lib", "--emit=obj", source, "-o", object).CombinedOutput()
+	if err != nil {
+		t.Fatalf("rustc Android object: %v: %s", err, output)
+	}
+	image, err := elf.Open(object)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if image.Machine != elf.EM_AARCH64 {
+		t.Errorf("Android object machine=%v", image.Machine)
+	}
+	if err := image.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
