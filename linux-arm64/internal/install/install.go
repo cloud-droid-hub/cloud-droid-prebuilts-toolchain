@@ -6,6 +6,7 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	"debug/elf"
 	"debug/macho"
@@ -15,7 +16,6 @@ import (
 	"hash"
 	"io"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
 	"runtime"
@@ -59,9 +59,12 @@ func RunTo(ctx context.Context, repo, dest string, spec catalog.Spec, output io.
 	if err != nil {
 		return err
 	}
-	dest, err = cleanDest(dest)
+	dest, err = filepath.Abs(dest)
 	if err != nil {
-		return err
+		return fmt.Errorf("resolve destination: %w", err)
+	}
+	if filepath.Dir(dest) == dest {
+		return fmt.Errorf("destination cannot be a filesystem root: %s", dest)
 	}
 	holds, err := holdsRepo(dest, repo)
 	if err != nil {
@@ -70,10 +73,7 @@ func RunTo(ctx context.Context, repo, dest string, spec catalog.Spec, output io.
 	if holds {
 		return fmt.Errorf("destination contains repository: %s", dest)
 	}
-	if err := prepRoot(dest); err != nil {
-		return err
-	}
-	root, err := openRoot(dest)
+	root, err := openTree(dest, true)
 	if err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func RunTo(ctx context.Context, repo, dest string, spec catalog.Spec, output io.
 		if err := matchRoot(root, dest); err != nil {
 			return err
 		}
-		component, openErr := openRel(root, archive.Dir, false)
+		component, openErr := openDir(root, archive.Dir)
 		if openErr == nil {
 			checkErr := checkComp(ctx, component, archive)
 			closeErr := component.Close()
@@ -123,7 +123,7 @@ func RunTo(ctx context.Context, repo, dest string, spec catalog.Spec, output io.
 			stop()
 			return err
 		}
-		installErr := installArc(ctx, repo, dest, root, archive)
+		installErr := installArc(ctx, repo, root, archive)
 		stop()
 		if err := progress.result(); err != nil {
 			return err
@@ -142,7 +142,7 @@ func RunTo(ctx context.Context, repo, dest string, spec catalog.Spec, output io.
 	if err := matchRoot(root, dest); err != nil {
 		return err
 	}
-	if err := putFence(ctx, root, dest); err != nil {
+	if err := putFence(ctx, root); err != nil {
 		return err
 	}
 	if err := matchRoot(root, dest); err != nil {
@@ -151,7 +151,7 @@ func RunTo(ctx context.Context, repo, dest string, spec catalog.Spec, output io.
 	if err := checkAt(ctx, root, spec); err != nil {
 		return err
 	}
-	return nil
+	return matchRoot(root, dest)
 }
 
 type progItem struct {
@@ -227,29 +227,6 @@ func (progress *progressOut) result() error {
 	return nil
 }
 
-func prepRoot(dest string) error {
-	info, err := os.Lstat(dest)
-	if errors.Is(err, os.ErrNotExist) {
-		if err := os.Mkdir(dest, 0o755); err != nil {
-			return fmt.Errorf("create toolchain root: %w", err)
-		}
-		if err := os.Chmod(dest, 0o755); err != nil {
-			return fmt.Errorf("set toolchain root mode: %w", err)
-		}
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("inspect toolchain root: %w", err)
-	}
-	if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
-		return fmt.Errorf("toolchain root is not a regular directory: %s", dest)
-	}
-	if info.Mode().Perm() != 0o755 {
-		return fmt.Errorf("toolchain root mode is %#o, want 0755", info.Mode().Perm())
-	}
-	return nil
-}
-
 func openRoot(dest string) (*os.File, error) {
 	pathInfo, err := os.Lstat(dest)
 	if err != nil {
@@ -268,54 +245,67 @@ func openRoot(dest string) (*os.File, error) {
 }
 
 func matchRoot(root *os.File, dest string) error {
-	pathInfo, err := os.Lstat(dest)
+	current, err := openTree(dest, false)
 	if err != nil {
-		return fmt.Errorf("inspect toolchain root identity: %w", err)
+		return fmt.Errorf("reopen toolchain root: %w", err)
+	}
+	defer current.Close()
+	pathInfo, err := current.Stat()
+	if err != nil {
+		return fmt.Errorf("inspect current toolchain root: %w", err)
 	}
 	openInfo, err := root.Stat()
 	if err != nil {
 		return fmt.Errorf("inspect opened toolchain root: %w", err)
 	}
-	if !pathInfo.IsDir() || pathInfo.Mode()&os.ModeSymlink != 0 || !os.SameFile(pathInfo, openInfo) {
+	if !os.SameFile(pathInfo, openInfo) {
 		return fmt.Errorf("toolchain root changed during install: %s", dest)
 	}
 	return nil
 }
 
-func installArc(ctx context.Context, repo, dest string, root *os.File, archive catalog.Archive) error {
+func installArc(ctx context.Context, repo string, root *os.File, archive catalog.Archive) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	work, err := os.MkdirTemp(filepath.Dir(dest), ".cdh-toolchain-")
+	workRoot, work, err := makeTemp(root, ".cdh-toolchain-")
 	if err != nil {
 		return fmt.Errorf("create install directory: %w", err)
 	}
-	if err := os.Chmod(work, 0o700); err != nil {
-		return fmt.Errorf("secure install directory: %w", err)
-	}
-	workRoot, err := openRoot(work)
-	if err != nil {
-		return err
-	}
 	defer workRoot.Close()
-	defer clearTemp(workRoot, work)
-	if err := unpack(ctx, repo, work, archive); err != nil {
+	defer clearTemp(root, workRoot, work)
+	if err := unpack(ctx, repo, workRoot, archive); err != nil {
 		return err
 	}
-	if err := matchRoot(workRoot, work); err != nil {
+	if !sameChild(root, workRoot, work) {
+		return errors.New("install directory changed during unpack")
+	}
+	candidate, err := openDir(workRoot, archive.Dir)
+	if err != nil {
+		return fmt.Errorf("open install candidate: %w", err)
+	}
+	defer candidate.Close()
+	if err := checkComp(ctx, candidate, archive); err != nil {
 		return err
 	}
-	if err := checkArc(ctx, workRoot, archive); err != nil {
-		return err
+	if !sameChild(workRoot, candidate, archive.Dir) {
+		return errors.New("install candidate changed after check")
 	}
-	if err := matchRoot(workRoot, work); err != nil {
-		return err
+	if !sameChild(root, workRoot, work) {
+		return errors.New("install directory changed before publish")
 	}
+	_ = ctx.Done()
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+	if !sameChild(workRoot, candidate, archive.Dir) {
+		return errors.New("install candidate changed before publish")
+	}
 	if err := moveNew(workRoot, archive.Dir, root); err != nil {
 		return fmt.Errorf("publish component without replacement: %w", err)
+	}
+	if !sameChild(root, candidate, archive.Dir) {
+		return errors.New("published component identity changed")
 	}
 	return nil
 }
@@ -348,27 +338,19 @@ func checkFence(ctx context.Context, root *os.File) error {
 	return nil
 }
 
-func putFence(ctx context.Context, root *os.File, dest string) error {
+func putFence(ctx context.Context, root *os.File) error {
 	if err := checkFence(ctx, root); err == nil {
 		return nil
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
-	work, err := os.MkdirTemp(filepath.Dir(dest), ".cdh-toolchain-fence-")
+	workRoot, work, err := makeTemp(root, ".cdh-toolchain-fence-")
 	if err != nil {
 		return fmt.Errorf("create module boundary directory: %w", err)
 	}
-	if err := os.Chmod(work, 0o700); err != nil {
-		return fmt.Errorf("secure module boundary directory: %w", err)
-	}
-	workRoot, err := openRoot(work)
-	if err != nil {
-		return err
-	}
 	defer workRoot.Close()
-	defer clearTemp(workRoot, work)
-	name := filepath.Join(work, "go.mod")
-	file, err := os.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	defer clearTemp(root, workRoot, work)
+	file, err := newFile(workRoot, "go.mod", 0o644)
 	if err != nil {
 		return fmt.Errorf("write module boundary: %w", err)
 	}
@@ -379,12 +361,6 @@ func putFence(ctx context.Context, root *os.File, dest string) error {
 	}
 	if closeErr != nil {
 		return fmt.Errorf("close module boundary: %w", closeErr)
-	}
-	if err := os.Chmod(name, 0o644); err != nil {
-		return fmt.Errorf("set module boundary mode: %w", err)
-	}
-	if err := matchRoot(workRoot, work); err != nil {
-		return err
 	}
 	if err := checkFence(ctx, workRoot); err != nil {
 		return err
@@ -398,13 +374,54 @@ func putFence(ctx context.Context, root *os.File, dest string) error {
 	return nil
 }
 
-func clearTemp(root *os.File, path string) {
+func clearTemp(parent, root *os.File, name string) {
 	if clearDir(root) != nil {
 		return
 	}
-	if matchRoot(root, path) == nil {
-		_ = unix.Unlinkat(unix.AT_FDCWD, path, unix.AT_REMOVEDIR)
+	if sameChild(parent, root, name) {
+		_ = unix.Unlinkat(int(parent.Fd()), name, unix.AT_REMOVEDIR)
 	}
+}
+
+func sameChild(parent, child *os.File, name string) bool {
+	var pathStat unix.Stat_t
+	if err := unix.Fstatat(int(parent.Fd()), name, &pathStat, unix.AT_SYMLINK_NOFOLLOW); err != nil {
+		return false
+	}
+	info, err := child.Stat()
+	if err != nil {
+		return false
+	}
+	openStat, ok := info.Sys().(*syscall.Stat_t)
+	return ok && uint64(pathStat.Dev) == uint64(openStat.Dev) && uint64(pathStat.Ino) == uint64(openStat.Ino)
+}
+
+func makeTemp(root *os.File, prefix string) (*os.File, string, error) {
+	for attempt := 0; attempt < 100; attempt++ {
+		var token [8]byte
+		if _, err := rand.Read(token[:]); err != nil {
+			return nil, "", err
+		}
+		name := prefix + hex.EncodeToString(token[:])
+		if err := unix.Mkdirat(int(root.Fd()), name, 0o700); err != nil {
+			if errors.Is(err, unix.EEXIST) {
+				continue
+			}
+			return nil, "", err
+		}
+		work, err := dirAt(root, name, false, 0o700)
+		if err != nil {
+			_ = unix.Unlinkat(int(root.Fd()), name, unix.AT_REMOVEDIR)
+			return nil, "", err
+		}
+		if err := work.Chmod(0o700); err != nil {
+			work.Close()
+			_ = unix.Unlinkat(int(root.Fd()), name, unix.AT_REMOVEDIR)
+			return nil, "", err
+		}
+		return work, name, nil
+	}
+	return nil, "", errors.New("cannot allocate unique install directory")
 }
 
 func clearDir(root *os.File) error {
@@ -455,15 +472,18 @@ func Check(ctx context.Context, root string, spec catalog.Spec) error {
 	if err != nil {
 		return fmt.Errorf("resolve toolchain root: %w", err)
 	}
-	if err := safeParents(filepath.Dir(abs)); err != nil {
-		return err
-	}
-	opened, err := openRoot(abs)
+	opened, err := openTree(abs, false)
 	if err != nil {
 		return err
 	}
 	defer opened.Close()
-	return checkAt(ctx, opened, spec)
+	if err := matchRoot(opened, abs); err != nil {
+		return err
+	}
+	if err := checkAt(ctx, opened, spec); err != nil {
+		return err
+	}
+	return matchRoot(opened, abs)
 }
 
 func checkAt(ctx context.Context, root *os.File, spec catalog.Spec) error {
@@ -486,7 +506,7 @@ func checkAt(ctx context.Context, root *os.File, spec catalog.Spec) error {
 }
 
 func checkArc(ctx context.Context, root *os.File, archive catalog.Archive) error {
-	component, err := openRel(root, archive.Dir, false)
+	component, err := openDir(root, archive.Dir)
 	if err != nil {
 		return fmt.Errorf("open component %s: %w", archive.Name, err)
 	}
@@ -541,23 +561,23 @@ func runProbe(ctx context.Context, root *os.File, name string, probe catalog.Pro
 		return fmt.Errorf("invalid probe for %s: %w", name, err)
 	}
 	defer program.Close()
-	programPath, err := fdPath(program)
-	if err != nil {
-		return fmt.Errorf("resolve probe for %s: %w", name, err)
+	programInfo, err := program.Stat()
+	if err != nil || !programInfo.Mode().IsRegular() || programInfo.Mode().Perm() != 0o755 || !safeOwner(programInfo) {
+		return fmt.Errorf("resolve probe for %s: opened probe is invalid", name)
 	}
-	if err := safeParents(filepath.Dir(programPath)); err != nil {
-		return fmt.Errorf("resolve probe for %s: %w", name, err)
-	}
-	if err := matchFile(program, programPath); err != nil {
-		return fmt.Errorf("resolve probe for %s: %w", name, err)
-	}
+	programPath := fdAlias(program)
 	if err := checkMachine(programPath, probe.Machine); err != nil {
 		return fmt.Errorf("probe machine for %s: %w", name, err)
 	}
-	cmd := exec.CommandContext(ctx, programPath, probe.Args...)
-	cmd.Args[0] = probe.Path
-	cmd.Env = mergeEnv(os.Environ(), probe.Env)
-	output, err := cmd.CombinedOutput()
+	output, err := runAt(
+		ctx,
+		root,
+		program,
+		probe.Path,
+		probe.Machine == catalog.Script,
+		probe.Args,
+		mergeEnv(os.Environ(), probe.Env),
+	)
 	if err != nil {
 		return fmt.Errorf("probe %s: %w: %s", name, err, strings.TrimSpace(string(output)))
 	}
@@ -568,22 +588,6 @@ func runProbe(ctx context.Context, root *os.File, name string, probe catalog.Pro
 	}
 	return nil
 }
-
-func matchFile(file *os.File, name string) error {
-	pathInfo, err := os.Stat(name)
-	if err != nil {
-		return err
-	}
-	openInfo, err := file.Stat()
-	if err != nil {
-		return err
-	}
-	if !pathInfo.Mode().IsRegular() || pathInfo.Mode().Perm() != 0o755 || !safeOwner(pathInfo) || !os.SameFile(pathInfo, openInfo) {
-		return errors.New("probe path changed while opening")
-	}
-	return nil
-}
-
 func mergeEnv(base, extra []string) []string {
 	keys := make(map[string]struct{}, len(extra))
 	for _, setting := range extra {
@@ -600,7 +604,7 @@ func mergeEnv(base, extra []string) []string {
 	return append(result, extra...)
 }
 
-func unpack(ctx context.Context, repo, root string, archive catalog.Archive) error {
+func unpack(ctx context.Context, repo string, root *os.File, archive catalog.Archive) error {
 	stream, err := openParts(repo, archive.Parts)
 	if err != nil {
 		return err
@@ -627,21 +631,19 @@ func unpack(ctx context.Context, repo, root string, archive catalog.Archive) err
 		return fmt.Errorf("unsupported archive format: %d", archive.Format)
 	}
 	reader = &ctxRead{ctx: ctx, reader: reader}
-	target := filepath.Join(root, archive.Dir)
-	if err := os.Mkdir(target, 0o755); err != nil {
+	target, err := makeDir(root, archive.Dir)
+	if err != nil {
 		return fmt.Errorf("create archive root: %w", err)
 	}
-	if err := os.Chmod(target, 0o755); err != nil {
-		return fmt.Errorf("set archive root mode: %w", err)
-	}
 	if err := untar(ctx, reader, target, archive.Prefix); err != nil {
+		target.Close()
 		return err
+	}
+	if err := target.Close(); err != nil {
+		return fmt.Errorf("close archive root: %w", err)
 	}
 	if _, err := io.Copy(io.Discard, reader); err != nil {
 		return fmt.Errorf("finish archive stream: %w", err)
-	}
-	if err := fixModes(ctx, target); err != nil {
-		return err
 	}
 	if err := closeFn(); err != nil {
 		return fmt.Errorf("close archive stream: %w", err)
@@ -652,7 +654,7 @@ func unpack(ctx context.Context, repo, root string, archive catalog.Archive) err
 	return nil
 }
 
-func untar(ctx context.Context, reader io.Reader, root, prefix string) error {
+func untar(ctx context.Context, reader io.Reader, root *os.File, prefix string) error {
 	tarReader := tar.NewReader(reader)
 	seen := make(map[string]struct{})
 	nodes := make(map[fileID]string)
@@ -674,60 +676,56 @@ func untar(ctx context.Context, reader io.Reader, root, prefix string) error {
 		if skip {
 			continue
 		}
+		parent, _, err := openParent(root, rel, true)
+		if err != nil {
+			return err
+		}
+		if err := parent.Close(); err != nil {
+			return fmt.Errorf("close archive parent: %w", err)
+		}
 		if _, exists := seen[rel]; exists {
 			return fmt.Errorf("duplicate archive path: %s", rel)
 		}
 		seen[rel] = struct{}{}
-		dest, err := safeJoin(root, rel)
-		if err != nil {
-			return err
-		}
-		if err := makeParent(root, rel); err != nil {
-			return err
-		}
 		if err := trackParents(root, rel, nodes); err != nil {
 			return err
 		}
-		if _, err := os.Lstat(dest); err == nil {
-			if err := checkNode(nodes, rel, dest); err != nil {
+		if _, err := nodeAt(root, rel); err == nil {
+			if err := checkNode(nodes, rel, root); err != nil {
 				return err
 			}
-		} else if !errors.Is(err, os.ErrNotExist) {
+		} else if !errors.Is(err, unix.ENOENT) {
 			return fmt.Errorf("inspect archive path: %w", err)
 		}
 		switch header.Typeflag {
 		case tar.TypeDir:
-			if err := os.Mkdir(dest, 0o755); err != nil {
-				if !errors.Is(err, os.ErrExist) {
-					return fmt.Errorf("create archive directory: %w", err)
-				}
-				info, statErr := os.Lstat(dest)
-				if statErr != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
-					return fmt.Errorf("archive directory path is not a regular directory: %s", rel)
-				}
+			dir, err := makeDir(root, rel)
+			if err != nil {
+				return fmt.Errorf("create archive directory: %w", err)
 			}
-			if err := os.Chmod(dest, 0o755); err != nil {
-				return fmt.Errorf("set archive directory mode: %w", err)
+			if err := dir.Close(); err != nil {
+				return fmt.Errorf("close archive directory: %w", err)
 			}
 		case tar.TypeReg, tar.TypeRegA:
 			mode := os.FileMode(0o644)
 			if header.Mode&0o111 != 0 {
 				mode = 0o755
 			}
-			file, err := os.OpenFile(dest, os.O_CREATE|os.O_EXCL|os.O_WRONLY, mode)
+			file, err := newFile(root, rel, mode)
 			if err != nil {
 				return fmt.Errorf("create archive file: %w", err)
 			}
 			written, copyErr := io.Copy(file, &ctxRead{ctx: ctx, reader: tarReader})
+			chmodErr := file.Chmod(mode)
 			closeErr := file.Close()
 			if copyErr != nil {
 				return fmt.Errorf("write archive file: %w", copyErr)
 			}
+			if chmodErr != nil {
+				return fmt.Errorf("set archive file mode: %w", chmodErr)
+			}
 			if closeErr != nil {
 				return fmt.Errorf("close archive file: %w", closeErr)
-			}
-			if err := os.Chmod(dest, mode); err != nil {
-				return fmt.Errorf("set archive file mode: %w", err)
 			}
 			if written != header.Size {
 				return fmt.Errorf("archive file size mismatch: %s", rel)
@@ -740,13 +738,13 @@ func untar(ctx context.Context, reader io.Reader, root, prefix string) error {
 			if linkRel == ".." || strings.HasPrefix(linkRel, "../") {
 				return fmt.Errorf("archive link escapes root: %s", rel)
 			}
-			if err := os.Symlink(header.Linkname, dest); err != nil {
+			if err := newLink(root, rel, header.Linkname); err != nil {
 				return fmt.Errorf("create archive link: %w", err)
 			}
 		default:
 			return fmt.Errorf("unsupported tar entry type %d: %s", header.Typeflag, rel)
 		}
-		if err := checkNode(nodes, rel, dest); err != nil {
+		if err := checkNode(nodes, rel, root); err != nil {
 			return err
 		}
 	}
@@ -757,22 +755,10 @@ type fileID struct {
 	inode  uint64
 }
 
-func nodeID(info os.FileInfo) (fileID, error) {
-	stat, ok := info.Sys().(*syscall.Stat_t)
-	if !ok {
-		return fileID{}, errors.New("file identity is unavailable")
-	}
-	return fileID{device: uint64(stat.Dev), inode: uint64(stat.Ino)}, nil
-}
-
-func checkNode(nodes map[fileID]string, rel, name string) error {
-	info, err := os.Lstat(name)
+func checkNode(nodes map[fileID]string, rel string, root *os.File) error {
+	id, err := nodeAt(root, rel)
 	if err != nil {
 		return fmt.Errorf("inspect archive node: %w", err)
-	}
-	id, err := nodeID(info)
-	if err != nil {
-		return err
 	}
 	if prior, exists := nodes[id]; exists && prior != rel {
 		return fmt.Errorf("archive paths share one filesystem node: %s and %s", prior, rel)
@@ -781,17 +767,15 @@ func checkNode(nodes map[fileID]string, rel, name string) error {
 	return nil
 }
 
-func trackParents(root, rel string, nodes map[fileID]string) error {
+func trackParents(root *os.File, rel string, nodes map[fileID]string) error {
 	parent := path.Dir(rel)
 	if parent == "." {
 		return nil
 	}
-	current := root
 	logical := ""
 	for _, part := range strings.Split(parent, "/") {
-		current = filepath.Join(current, part)
 		logical = path.Join(logical, part)
-		if err := checkNode(nodes, logical, current); err != nil {
+		if err := checkNode(nodes, logical, root); err != nil {
 			return err
 		}
 	}
@@ -847,13 +831,28 @@ func openRel(root *os.File, rel string, follow bool) (*os.File, error) {
 		for index, name := range pending {
 			final := index == len(pending)-1
 			flags := unix.O_RDONLY | unix.O_CLOEXEC | unix.O_NOFOLLOW
-			if !final {
+			if final {
+				flags |= unix.O_NONBLOCK
+			} else {
 				flags |= unix.O_DIRECTORY
 			}
 			fd, openErr := unix.Openat(int(dir.Fd()), name, flags, 0)
 			if openErr == nil {
-				next := os.NewFile(uintptr(fd), name)
+				fileName := name
 				if final {
+					fileName = path.Join(pending...)
+				}
+				next := os.NewFile(uintptr(fd), fileName)
+				if final {
+					info, statErr := next.Stat()
+					if statErr != nil || !info.Mode().IsRegular() {
+						next.Close()
+						dir.Close()
+						if statErr != nil {
+							return nil, statErr
+						}
+						return nil, fmt.Errorf("relative path is not a regular file: %s", rel)
+					}
 					dir.Close()
 					return next, nil
 				}
@@ -927,34 +926,6 @@ func readLink(root *os.File, name string) (string, error) {
 	return string(buffer[:count]), nil
 }
 
-func makeParent(root, rel string) error {
-	parent := path.Dir(rel)
-	if parent == "." {
-		return nil
-	}
-	current := root
-	for _, name := range strings.Split(parent, "/") {
-		current = filepath.Join(current, name)
-		info, err := os.Lstat(current)
-		if errors.Is(err, os.ErrNotExist) {
-			if err := os.Mkdir(current, 0o755); err != nil {
-				return fmt.Errorf("create archive parent: %w", err)
-			}
-			if err := os.Chmod(current, 0o755); err != nil {
-				return fmt.Errorf("set archive parent mode: %w", err)
-			}
-			continue
-		}
-		if err != nil {
-			return fmt.Errorf("inspect archive parent: %w", err)
-		}
-		if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 || !safeOwner(info) {
-			return fmt.Errorf("archive parent is not a regular directory: %s", current)
-		}
-	}
-	return nil
-}
-
 func safeOwner(info os.FileInfo) bool {
 	stat, ok := info.Sys().(*syscall.Stat_t)
 	if !ok {
@@ -982,76 +953,245 @@ func cleanRoot(root string) (string, error) {
 	return real, nil
 }
 
-func cleanDest(dest string) (string, error) {
-	abs, err := filepath.Abs(dest)
+func openTree(name string, create bool) (*os.File, error) {
+	abs, err := filepath.Abs(name)
 	if err != nil {
-		return "", fmt.Errorf("resolve destination: %w", err)
+		return nil, fmt.Errorf("resolve destination tree: %w", err)
 	}
+	abs = filepath.Clean(abs)
 	if filepath.Dir(abs) == abs {
-		return "", fmt.Errorf("destination cannot be a filesystem root: %s", abs)
+		return nil, fmt.Errorf("destination cannot be a filesystem root: %s", abs)
 	}
-	parent := filepath.Dir(abs)
-	if err := makeDirs(parent, 0o755); err != nil {
-		return "", fmt.Errorf("create destination parent: %w", err)
-	}
-	realParent, err := filepath.EvalSymlinks(parent)
+	root, err := os.Open(string(filepath.Separator))
 	if err != nil {
-		return "", fmt.Errorf("resolve destination parent: %w", err)
+		return nil, fmt.Errorf("open filesystem root: %w", err)
 	}
-	if err := safeParents(realParent); err != nil {
-		return "", err
+	rootInfo, err := root.Stat()
+	if err != nil || !rootInfo.IsDir() || !safeOwner(rootInfo) || rootInfo.Mode().Perm()&0o022 != 0 {
+		root.Close()
+		return nil, errors.New("filesystem root is not secure")
 	}
-	return filepath.Join(realParent, filepath.Base(abs)), nil
-}
-
-func safeParents(name string) error {
-	for {
-		info, err := os.Lstat(name)
+	parts := strings.Split(strings.TrimPrefix(abs, string(filepath.Separator)), string(filepath.Separator))
+	current := root
+	for index, part := range parts {
+		final := index == len(parts)-1
+		parentInfo, err := current.Stat()
 		if err != nil {
-			return fmt.Errorf("inspect destination parent: %w", err)
+			current.Close()
+			return nil, fmt.Errorf("inspect destination parent: %w", err)
 		}
-		if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 || !safeOwner(info) {
-			return fmt.Errorf("destination parent is not a regular directory: %s", name)
+		next, err := dirAt(current, part, create, 0o755)
+		if err != nil {
+			current.Close()
+			return nil, fmt.Errorf("open destination directory %s: %w", part, err)
 		}
-		if info.Mode().Perm()&0o022 != 0 {
-			return fmt.Errorf("destination parent is writable by other users: %s", name)
+		info, err := next.Stat()
+		if err != nil {
+			next.Close()
+			current.Close()
+			return nil, fmt.Errorf("inspect destination directory %s: %w", part, err)
 		}
-		parent := filepath.Dir(name)
-		if parent == name {
-			return nil
+		stat, statOK := info.Sys().(*syscall.Stat_t)
+		parentStat, parentOK := parentInfo.Sys().(*syscall.Stat_t)
+		if statOK && parentOK {
+			mode, fix := mountFix(
+				info.Mode(), stat.Uid, uint64(stat.Dev), uint64(parentStat.Dev), !final && create,
+			)
+			if fix {
+				if err := next.Chmod(mode); err != nil {
+					next.Close()
+					current.Close()
+					return nil, fmt.Errorf("set destination mount mode %s: %w", part, err)
+				}
+				info, err = next.Stat()
+				if err != nil {
+					next.Close()
+					current.Close()
+					return nil, fmt.Errorf("inspect destination mount %s: %w", part, err)
+				}
+			}
 		}
-		name = parent
+		valid := info.Mode().Perm() == 0o755 && safeOwner(info)
+		if !final {
+			valid = safeParent(info, parentInfo)
+		}
+		if !valid {
+			next.Close()
+			current.Close()
+			return nil, fmt.Errorf("destination directory is not secure: %s", part)
+		}
+		current.Close()
+		current = next
 	}
+	return current, nil
 }
 
-func makeDirs(name string, mode os.FileMode) error {
-	info, err := os.Lstat(name)
-	if err == nil {
-		if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("path is not a regular directory: %s", name)
-		}
-		return nil
+func safeParent(info, parent os.FileInfo) bool {
+	if !info.IsDir() || !safeOwner(info) {
+		return false
 	}
-	if !errors.Is(err, os.ErrNotExist) {
+	stat, statOK := info.Sys().(*syscall.Stat_t)
+	parentStat, parentOK := parent.Sys().(*syscall.Stat_t)
+	if !statOK || !parentOK {
+		return false
+	}
+	return parentMode(info.Mode(), stat.Uid, uint64(stat.Dev), uint64(parentStat.Dev))
+}
+
+func mountFix(mode os.FileMode, uid uint32, dev, parentDev uint64, create bool) (os.FileMode, bool) {
+	perm := mode.Perm()
+	if !create || perm&0o020 == 0 || perm&0o002 != 0 || uid != uint32(os.Geteuid()) ||
+		dev == parentDev || mode&os.ModeSticky != 0 {
+		return mode, false
+	}
+	chmodMode := mode & (os.ModePerm | os.ModeSetuid | os.ModeSetgid | os.ModeSticky)
+	return chmodMode | os.ModeSticky, true
+}
+
+func parentMode(mode os.FileMode, uid uint32, dev, parentDev uint64) bool {
+	perm := mode.Perm()
+	if perm&0o002 != 0 {
+		return false
+	}
+	if perm&0o020 == 0 {
+		return true
+	}
+	return uid == uint32(os.Geteuid()) && dev != parentDev && mode&os.ModeSticky != 0
+}
+
+func dirAt(root *os.File, name string, create bool, mode os.FileMode) (*os.File, error) {
+	return dirAtWith(root, name, create, mode, unix.Mkdirat)
+}
+
+func dirAtWith(
+	root *os.File,
+	name string,
+	create bool,
+	mode os.FileMode,
+	mk func(int, string, uint32) error,
+) (*os.File, error) {
+	flags := unix.O_RDONLY | unix.O_DIRECTORY | unix.O_NOFOLLOW | unix.O_CLOEXEC
+	fd, err := unix.Openat(int(root.Fd()), name, flags, 0)
+	if err != nil && create && errors.Is(err, unix.ENOENT) {
+		if err := mk(int(root.Fd()), name, uint32(mode.Perm())); err != nil {
+			return nil, err
+		}
+		fd, err = unix.Openat(int(root.Fd()), name, flags, 0)
+		if err == nil {
+			err = unix.Fchmod(fd, uint32(mode.Perm()))
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	dir := os.NewFile(uintptr(fd), name)
+	info, statErr := dir.Stat()
+	if statErr != nil || !info.IsDir() || !safeOwner(info) {
+		dir.Close()
+		if statErr != nil {
+			return nil, statErr
+		}
+		return nil, fmt.Errorf("directory is not owned safely: %s", name)
+	}
+	return dir, nil
+}
+
+func openDir(root *os.File, rel string) (*os.File, error) {
+	parent, name, err := openParent(root, rel, false)
+	if err != nil {
+		return nil, err
+	}
+	defer parent.Close()
+	return dirAt(parent, name, false, 0o755)
+}
+
+func openParent(root *os.File, rel string, create bool) (*os.File, string, error) {
+	clean := path.Clean(filepath.ToSlash(rel))
+	if path.IsAbs(clean) || clean == "." || clean == ".." || strings.HasPrefix(clean, "../") {
+		return nil, "", fmt.Errorf("invalid relative path: %s", rel)
+	}
+	parts := strings.Split(clean, "/")
+	dir, err := dupRoot(root)
+	if err != nil {
+		return nil, "", err
+	}
+	for _, name := range parts[:len(parts)-1] {
+		next, err := dirAt(dir, name, create, 0o755)
+		if err != nil {
+			dir.Close()
+			return nil, "", err
+		}
+		info, err := next.Stat()
+		if err != nil || info.Mode().Perm() != 0o755 {
+			next.Close()
+			dir.Close()
+			return nil, "", fmt.Errorf("relative directory is invalid: %s", rel)
+		}
+		dir.Close()
+		dir = next
+	}
+	return dir, parts[len(parts)-1], nil
+}
+
+func makeDir(root *os.File, rel string) (*os.File, error) {
+	parent, name, err := openParent(root, rel, true)
+	if err != nil {
+		return nil, err
+	}
+	defer parent.Close()
+	if err := unix.Mkdirat(int(parent.Fd()), name, 0o755); err != nil && !errors.Is(err, unix.EEXIST) {
+		return nil, err
+	}
+	dir, err := dirAt(parent, name, false, 0o755)
+	if err != nil {
+		return nil, err
+	}
+	if err := dir.Chmod(0o755); err != nil {
+		dir.Close()
+		return nil, err
+	}
+	return dir, nil
+}
+
+func newFile(root *os.File, rel string, mode os.FileMode) (*os.File, error) {
+	parent, name, err := openParent(root, rel, true)
+	if err != nil {
+		return nil, err
+	}
+	defer parent.Close()
+	flags := unix.O_WRONLY | unix.O_CREAT | unix.O_EXCL | unix.O_NOFOLLOW | unix.O_CLOEXEC
+	fd, err := unix.Openat(int(parent.Fd()), name, flags, uint32(mode.Perm()))
+	if err != nil {
+		return nil, err
+	}
+	file := os.NewFile(uintptr(fd), name)
+	if err := file.Chmod(mode); err != nil {
+		file.Close()
+		return nil, err
+	}
+	return file, nil
+}
+
+func newLink(root *os.File, rel, target string) error {
+	parent, name, err := openParent(root, rel, true)
+	if err != nil {
 		return err
 	}
-	parent := filepath.Dir(name)
-	if parent != name {
-		if err := makeDirs(parent, mode); err != nil {
-			return err
-		}
+	defer parent.Close()
+	return unix.Symlinkat(target, int(parent.Fd()), name)
+}
+
+func nodeAt(root *os.File, rel string) (fileID, error) {
+	parent, name, err := openParent(root, rel, false)
+	if err != nil {
+		return fileID{}, err
 	}
-	if err := os.Mkdir(name, mode); err != nil {
-		if !errors.Is(err, os.ErrExist) {
-			return err
-		}
-		info, statErr := os.Lstat(name)
-		if statErr != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("path changed while creating directory: %s", name)
-		}
-		return nil
+	defer parent.Close()
+	var stat unix.Stat_t
+	if err := unix.Fstatat(int(parent.Fd()), name, &stat, unix.AT_SYMLINK_NOFOLLOW); err != nil {
+		return fileID{}, err
 	}
-	return os.Chmod(name, mode)
+	return fileID{device: uint64(stat.Dev), inode: uint64(stat.Ino)}, nil
 }
 
 func inTree(root, item string) bool {
@@ -1088,32 +1228,6 @@ func holdsRepo(dest, repo string) (bool, error) {
 		return false, fmt.Errorf("inspect destination: %w", err)
 	}
 	return inTree(dest, repo), nil
-}
-
-func fixModes(ctx context.Context, root string) error {
-	return filepath.WalkDir(root, func(pathName string, entry os.DirEntry, walkErr error) error {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		if walkErr != nil {
-			return walkErr
-		}
-		info, err := entry.Info()
-		if err != nil {
-			return err
-		}
-		if info.Mode()&os.ModeSymlink != 0 {
-			return nil
-		}
-		mode := os.FileMode(0o644)
-		if info.IsDir() || info.Mode()&0o111 != 0 {
-			mode = 0o755
-		}
-		if err := os.Chmod(pathName, mode); err != nil {
-			return fmt.Errorf("set installed mode: %w", err)
-		}
-		return nil
-	})
 }
 
 type ctxRead struct {

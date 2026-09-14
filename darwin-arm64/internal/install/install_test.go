@@ -18,11 +18,14 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/catalog"
 	"github.com/ulikunitz/xz"
+	"golang.org/x/sys/unix"
 )
 
 func TestInstall(t *testing.T) {
@@ -148,7 +151,7 @@ func TestSourceSwap(t *testing.T) {
 	parent := t.TempDir()
 	dest := filepath.Join(parent, "tools")
 	ctx := &sourceSwap{
-		Context: context.Background(), parent: parent, dir: spec.Archives[0].Dir,
+		Context: context.Background(), parent: dest, dir: spec.Archives[0].Dir,
 		body: []byte("Tool 1 1.26.1\n"),
 	}
 	if err := Run(ctx, repo, dest, spec); err == nil {
@@ -211,6 +214,159 @@ func TestUnsafeParent(t *testing.T) {
 	}
 }
 
+func TestGroupParent(t *testing.T) {
+	spec, repo := makeMany(t, 1)
+	parent := t.TempDir()
+	if err := os.Chmod(parent, 0o775); err != nil {
+		t.Fatal(err)
+	}
+	dest := filepath.Join(parent, "tools")
+	if err := Run(context.Background(), repo, dest, spec); err == nil {
+		t.Fatal("普通组可写父目录被接受")
+	}
+	if _, err := os.Lstat(dest); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("拒绝组可写父目录前已创建目标: %v", err)
+	}
+}
+
+func TestParentLink(t *testing.T) {
+	spec, repo := makeMany(t, 1)
+	base := t.TempDir()
+	real := t.TempDir()
+	parent := filepath.Join(real, "existing")
+	if err := os.Mkdir(parent, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(real, filepath.Join(base, "linked")); err != nil {
+		t.Fatal(err)
+	}
+	dest := filepath.Join(base, "linked", "existing", "tools")
+	if err := Run(context.Background(), repo, dest, spec); err == nil {
+		t.Fatal("含中间符号链接的目标路径被接受")
+	}
+	if _, err := os.Lstat(filepath.Join(parent, "tools")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("拒绝链接路径前已创建目标: %v", err)
+	}
+}
+
+func TestMountFix(t *testing.T) {
+	uid := uint32(os.Geteuid())
+	mode := os.FileMode(0o775) | os.ModeSetgid
+	got, changed := mountFix(mode, uid, 2, 1, true)
+	want := mode | os.ModeSticky
+	if !changed || got != want {
+		t.Fatalf("mountFix(create=true)=(%v,%t) want (%v,true)", got, changed, want)
+	}
+	got, changed = mountFix(mode, uid, 2, 1, false)
+	if changed || got != mode {
+		t.Fatalf("mountFix(create=false)=(%v,%t) want (%v,false)", got, changed, mode)
+	}
+}
+
+func TestOwnedMount(t *testing.T) {
+	spec, repo := makeMany(t, 1)
+	base := t.TempDir()
+	name := base
+	found := false
+	mount := ""
+	var original os.FileMode
+	for {
+		info, err := os.Lstat(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		parent := filepath.Dir(name)
+		if parent == name {
+			break
+		}
+		parentInfo, err := os.Lstat(parent)
+		if err != nil {
+			t.Fatal(err)
+		}
+		stat, statOK := info.Sys().(*syscall.Stat_t)
+		parentStat, parentOK := parentInfo.Sys().(*syscall.Stat_t)
+		mode := info.Mode()
+		if statOK && parentOK && stat.Uid == uint32(os.Geteuid()) &&
+			mode.Perm()&0o020 != 0 && mode.Perm()&0o002 == 0 && stat.Dev != parentStat.Dev {
+			found = true
+			mount = name
+			original = mode
+			break
+		}
+		name = parent
+	}
+	if !found {
+		t.Skip("测试路径没有当前用户拥有的组可写挂载根")
+	}
+	t.Cleanup(func() {
+		if err := os.Chmod(mount, original); err != nil {
+			t.Errorf("恢复挂载根模式: %v", err)
+		}
+	})
+	baseMode := original.Perm() | original&(os.ModeSetuid|os.ModeSetgid)
+	if err := os.Chmod(mount, baseMode); err != nil {
+		t.Fatalf("设置挂载根测试模式: %v", err)
+	}
+	before, err := os.Lstat(mount)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before.Mode()&os.ModeSticky != 0 {
+		t.Fatalf("挂载根测试模式仍有sticky位: mode=%v", before.Mode())
+	}
+	dest := filepath.Join(base, "tools")
+	if err := os.Mkdir(dest, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := Check(context.Background(), dest, spec); err == nil {
+		t.Fatal("Check接受了缺少sticky位的组可写挂载根")
+	}
+	afterCheck, err := os.Lstat(mount)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if afterCheck.Mode() != before.Mode() {
+		t.Fatalf("Check修改了挂载根模式: got=%v want=%v", afterCheck.Mode(), before.Mode())
+	}
+	if err := Run(context.Background(), repo, dest, spec); err != nil {
+		t.Fatalf("当前用户拥有的组可写挂载根被拒绝: %v", err)
+	}
+	info, err := os.Lstat(mount)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode()&os.ModeSticky == 0 {
+		t.Fatalf("安装后挂载根未设置sticky位: mode=%v", info.Mode())
+	}
+	if got, want := info.Mode()&^os.ModeSticky, before.Mode(); got != want {
+		t.Fatalf("安装修改了sticky之外的挂载根模式: got=%v want=%v", got, want)
+	}
+}
+
+func TestParentMode(t *testing.T) {
+	uid := uint32(os.Geteuid())
+	tests := []struct {
+		name      string
+		mode      os.FileMode
+		uid       uint32
+		dev       uint64
+		parentDev uint64
+		want      bool
+	}{
+		{name: "secure", mode: 0o755, uid: uid + 1, dev: 1, parentDev: 1, want: true},
+		{name: "owned mount", mode: 0o775, uid: uid, dev: 2, parentDev: 1},
+		{name: "sticky mount", mode: 0o775 | os.ModeSticky, uid: uid, dev: 2, parentDev: 1, want: true},
+		{name: "same device", mode: 0o775, uid: uid, dev: 1, parentDev: 1},
+		{name: "other owner", mode: 0o775, uid: uid + 1, dev: 2, parentDev: 1},
+		{name: "world writable", mode: 0o777, uid: uid, dev: 2, parentDev: 1},
+	}
+	for _, test := range tests {
+		if got := parentMode(test.mode, test.uid, test.dev, test.parentDev); got != test.want {
+			t.Errorf("%s: parentMode=%t want %t", test.name, got, test.want)
+		}
+	}
+}
+
 func TestSafeCleanup(t *testing.T) {
 	parent := t.TempDir()
 	work := filepath.Join(parent, ".cdh-toolchain-work")
@@ -221,6 +377,11 @@ func TestSafeCleanup(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(original, "data"), []byte("temporary\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	parentRoot, err := openRoot(parent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer parentRoot.Close()
 	root, err := openRoot(work)
 	if err != nil {
 		t.Fatal(err)
@@ -237,7 +398,7 @@ func TestSafeCleanup(t *testing.T) {
 	if err := os.WriteFile(keep, []byte("user\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	clearTemp(root, work)
+	clearTemp(parentRoot, root, filepath.Base(work))
 	if got, err := os.ReadFile(keep); err != nil || string(got) != "user\n" {
 		t.Fatalf("替换路径内容=%q error=%v", got, err)
 	}
@@ -762,6 +923,75 @@ func TestProbeArg0(t *testing.T) {
 	}
 }
 
+func TestProbeRelLink(t *testing.T) {
+	useLocalTmp(t)
+	program := buildArg0(t)
+	items := []tarItem{
+		{header: tar.Header{Name: "payload/bin/", Typeflag: tar.TypeDir, Mode: 0o755}},
+		{header: tar.Header{Name: "payload/lib/", Typeflag: tar.TypeDir, Mode: 0o755}},
+		{header: tar.Header{Name: "payload/lib/tool", Typeflag: tar.TypeReg, Mode: 0o755, Size: int64(len(program))}, data: string(program)},
+		{header: tar.Header{Name: "payload/bin/link", Typeflag: tar.TypeSymlink, Linkname: "../lib/tool", Mode: 0o777}},
+	}
+	spec, repo := makeSpec(t, items)
+	spec.Archives[0].DataOnly = false
+	spec.Archives[0].Probes = []catalog.Probe{{
+		Path: "bin/link", Want: []string{"go1.26.8 link"}, Machine: testMachine(),
+	}}
+	if err := Run(context.Background(), repo, filepath.Join(t.TempDir(), "tools"), spec); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestProbeCancel(t *testing.T) {
+	useLocalTmp(t)
+	script := "#!/bin/sh\n: > \"$READY\"\necho go1.26.8 ready\nwhile :; do :; done\n"
+	items := []tarItem{
+		{header: tar.Header{Name: "payload/bin/", Typeflag: tar.TypeDir, Mode: 0o755}},
+		{header: tar.Header{Name: "payload/bin/wait", Typeflag: tar.TypeReg, Mode: 0o755, Size: int64(len(script))}, data: script},
+	}
+	spec, repo := makeSpec(t, items)
+	marker := filepath.Join(t.TempDir(), "ready")
+	spec.Archives[0].Probes = []catalog.Probe{{
+		Path: "bin/wait", Want: []string{"go1.26.8", "ready"}, Machine: catalog.Script, Env: []string{"READY=" + marker},
+	}}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	dest := filepath.Join(t.TempDir(), "tools")
+	done := make(chan error, 1)
+	go func() {
+		done <- Run(ctx, repo, dest, spec)
+	}()
+	ticker := time.NewTicker(time.Millisecond)
+	defer ticker.Stop()
+	deadline := time.NewTimer(5 * time.Second)
+	defer deadline.Stop()
+	for {
+		if _, err := os.Stat(marker); err == nil {
+			cancel()
+			break
+		} else if !errors.Is(err, os.ErrNotExist) {
+			cancel()
+			t.Fatalf("inspect probe marker: %v", err)
+		}
+		select {
+		case runErr := <-done:
+			t.Fatalf("probe ended before ready: %v", runErr)
+		case <-deadline.C:
+			cancel()
+			t.Fatal("probe did not become ready")
+		case <-ticker.C:
+		}
+	}
+	select {
+	case runErr := <-done:
+		if !errors.Is(runErr, context.Canceled) {
+			t.Fatalf("error=%v want context canceled", runErr)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("probe did not stop after cancellation")
+	}
+}
+
 func buildArg0(t *testing.T) []byte {
 	t.Helper()
 	dir := t.TempDir()
@@ -1133,4 +1363,270 @@ func assertMode(t *testing.T, path string, want os.FileMode) {
 	if info.Mode().Perm() != want {
 		t.Fatalf("mode=%#o want=%#o path=%s", info.Mode().Perm(), want, path)
 	}
+}
+
+type finalLinkOut struct {
+	bytes.Buffer
+	parent string
+	moved  string
+	ran    bool
+	err    error
+}
+
+func (out *finalLinkOut) Write(data []byte) (int, error) {
+	n, err := out.Buffer.Write(data)
+	if err != nil || out.ran || !strings.Contains(string(data), "state=installed") {
+		return n, err
+	}
+	out.ran = true
+	if err := os.Rename(out.parent, out.moved); err != nil {
+		out.err = err
+		return n, nil
+	}
+	out.err = os.Symlink(filepath.Base(out.moved), out.parent)
+	return n, nil
+}
+
+func TestFinalLink(t *testing.T) {
+	useLocalTmp(t)
+	spec, repo := makeMany(t, 1)
+	base := t.TempDir()
+	parent := filepath.Join(base, "parent")
+	if err := os.Mkdir(parent, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	dest := filepath.Join(parent, "tools")
+	out := &finalLinkOut{
+		parent: parent,
+		moved:  filepath.Join(base, "parent-old"),
+	}
+	runErr := RunTo(context.Background(), repo, dest, spec, out)
+	if out.err != nil {
+		t.Fatal(out.err)
+	}
+	if !out.ran {
+		t.Fatal("final parent replacement did not run")
+	}
+	if runErr == nil {
+		t.Fatal("install accepted a final intermediate symlink")
+	}
+}
+
+type compSwapCtx struct {
+	context.Context
+	once sync.Once
+	dest string
+	dir  string
+	body []byte
+	ran  bool
+	err  error
+}
+
+func (ctx *compSwapCtx) Err() error {
+	return ctx.Context.Err()
+}
+
+func (ctx *compSwapCtx) Done() <-chan struct{} {
+	ctx.once.Do(ctx.swap)
+	return ctx.Context.Done()
+}
+
+func (ctx *compSwapCtx) swap() {
+	work, err := filepath.Glob(filepath.Join(ctx.dest, ".cdh-toolchain-*"))
+	if err != nil {
+		ctx.err = err
+		return
+	}
+	for _, item := range work {
+		comp := filepath.Join(item, ctx.dir)
+		got, err := os.ReadFile(filepath.Join(comp, "id.txt"))
+		if err != nil || !bytes.Equal(got, ctx.body) {
+			continue
+		}
+		if err := os.Rename(comp, comp+"-old"); err != nil {
+			ctx.err = err
+			return
+		}
+		if err := os.Mkdir(comp, 0o755); err != nil {
+			ctx.err = err
+			return
+		}
+		if err := os.WriteFile(filepath.Join(comp, "id.txt"), ctx.body, 0o644); err != nil {
+			ctx.err = err
+			return
+		}
+		ctx.err = os.WriteFile(filepath.Join(comp, "bad"), []byte("unverified"), 0o644)
+		ctx.ran = ctx.err == nil
+		return
+	}
+}
+
+func TestCompSwap(t *testing.T) {
+	useLocalTmp(t)
+	spec, repo := makeMany(t, 1)
+	dest := filepath.Join(t.TempDir(), "tools")
+	ctx := &compSwapCtx{
+		Context: context.Background(),
+		dest:    dest,
+		dir:     spec.Archives[0].Dir,
+		body:    []byte("Tool 1 1.26.1\n"),
+	}
+	runErr := Run(ctx, repo, dest, spec)
+	if ctx.err != nil {
+		t.Fatal(ctx.err)
+	}
+	if !ctx.ran {
+		t.Fatal("staged component replacement did not run")
+	}
+	if runErr == nil {
+		t.Fatal("install published an unchecked staged component")
+	}
+	bad := filepath.Join(dest, spec.Archives[0].Dir, "bad")
+	if _, err := os.Lstat(bad); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("replacement component was published: %v", err)
+	}
+}
+
+type probeRaceCtx struct {
+	context.Context
+	once    sync.Once
+	bin     string
+	moved   string
+	outside string
+	ran     bool
+	err     error
+}
+
+func (ctx *probeRaceCtx) Done() <-chan struct{} {
+	ctx.once.Do(func() {
+		ctx.ran = true
+		if err := os.Rename(ctx.bin, ctx.moved); err != nil {
+			ctx.err = err
+			return
+		}
+		ctx.err = os.Symlink(ctx.outside, ctx.bin)
+	})
+	return ctx.Context.Done()
+}
+
+func (ctx *probeRaceCtx) state() (bool, error) {
+	ctx.once.Do(func() {})
+	return ctx.ran, ctx.err
+}
+
+func TestProbeRace(t *testing.T) {
+	useLocalTmp(t)
+	spec, repo := makeSample(t)
+	mark := filepath.Join(t.TempDir(), "mark")
+	spec.Archives[0].Probes[0].Env = []string{"MARK=" + mark}
+	dest := filepath.Join(t.TempDir(), "tools")
+	if err := Run(context.Background(), repo, dest, spec); err != nil {
+		t.Fatal(err)
+	}
+	outside := t.TempDir()
+	evil := "#!/bin/sh\n: > \"$MARK\"\necho go1.26.8\n"
+	if err := os.WriteFile(filepath.Join(outside, "go"), []byte(evil), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	bin := filepath.Join(dest, spec.Archives[0].Dir, "bin")
+	ctx := &probeRaceCtx{
+		Context: context.Background(),
+		bin:     bin,
+		moved:   bin + "-old",
+		outside: outside,
+	}
+	runErr := Check(ctx, dest, spec)
+	ran, hookErr := ctx.state()
+	if hookErr != nil {
+		t.Fatal(hookErr)
+	}
+	if !ran {
+		t.Fatal("post-open probe replacement did not run")
+	}
+	if _, err := os.Lstat(mark); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("replacement probe executed: %v", err)
+	}
+	if runErr == nil {
+		t.Fatal("check accepted a replaced probe path")
+	}
+}
+
+func TestFIFOFast(t *testing.T) {
+	useLocalTmp(t)
+	if os.Getenv("CDH_FIFO_CASE") == "1" {
+		spec, repo := makeMany(t, 1)
+		dest := filepath.Join(t.TempDir(), "tools")
+		if err := os.Mkdir(dest, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		fifo := filepath.Join(dest, spec.Archives[0].Dir)
+		if err := unix.Mkfifo(fifo, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := Run(context.Background(), repo, dest, spec); err == nil {
+			t.Fatal("FIFO was accepted")
+		}
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestFIFOFast$", "-test.count=1")
+	cmd.Env = append(os.Environ(), "CDH_FIFO_CASE=1")
+	output, runErr := cmd.CombinedOutput()
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		t.Fatalf("FIFO was not rejected within two seconds:\n%s", output)
+	}
+	if runErr != nil {
+		t.Fatalf("FIFO child failed: %v\n%s", runErr, output)
+	}
+}
+
+func useLocalTmp(t *testing.T) {
+	t.Helper()
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	tmp, err := os.MkdirTemp(cwd, ".install-test-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := os.RemoveAll(tmp); err != nil {
+			t.Errorf("remove local temp: %v", err)
+		}
+	})
+	t.Setenv("TMPDIR", tmp)
+}
+
+func TestMkdirRace(t *testing.T) {
+	useLocalTmp(t)
+	base := t.TempDir()
+	root, err := openRoot(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+	calls := 0
+	mk := func(fd int, name string, mode uint32) error {
+		calls++
+		if err := unix.Mkdirat(fd, name, 0o775); err != nil {
+			return err
+		}
+		if err := os.Chmod(filepath.Join(base, name), 0o775); err != nil {
+			return err
+		}
+		return unix.EEXIST
+	}
+	dir, runErr := dirAtWith(root, "race", true, 0o755, mk)
+	if dir != nil {
+		dir.Close()
+	}
+	if calls != 1 {
+		t.Fatalf("Mkdirat calls=%d", calls)
+	}
+	if runErr == nil {
+		t.Fatal("Mkdirat EEXIST was accepted")
+	}
+	assertMode(t, filepath.Join(base, "race"), 0o775)
 }

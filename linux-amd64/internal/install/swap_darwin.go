@@ -3,9 +3,13 @@
 package install
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"os"
-	"unsafe"
+	"os/exec"
+	"runtime"
+	"strconv"
 
 	"golang.org/x/sys/unix"
 )
@@ -18,19 +22,68 @@ func moveNew(from *os.File, name string, root *os.File) error {
 	return unix.RenameatxNp(int(from.Fd()), name, int(root.Fd()), name, unix.RENAME_EXCL)
 }
 
-func fdPath(file *os.File) (string, error) {
-	buffer := make([]byte, 4096)
-	_, _, errno := unix.Syscall(unix.SYS_FCNTL, file.Fd(), uintptr(unix.F_GETPATH), uintptr(unsafe.Pointer(&buffer[0])))
-	if errno != 0 {
-		return "", errno
+func fdAlias(file *os.File) string {
+	return "/dev/fd/" + strconv.FormatUint(uint64(file.Fd()), 10)
+}
+
+func runAt(ctx context.Context, root, program *os.File, rel string, _ bool, args, env []string) ([]byte, error) {
+	_ = ctx.Done()
+	doneCtx := ctx.Done()
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
-	for index, value := range buffer {
-		if value == 0 {
-			if index == 0 {
-				return "", errors.New("file path is empty")
+	parent, name, err := openParent(root, program.Name(), false)
+	if err != nil {
+		return nil, fmt.Errorf("open probe parent: %w", err)
+	}
+	defer parent.Close()
+	runCtx, cancel := context.WithCancel(context.Background())
+	stop := make(chan struct{})
+	if doneCtx != nil {
+		go func() {
+			select {
+			case <-doneCtx:
+				cancel()
+			case <-stop:
 			}
-			return string(buffer[:index]), nil
-		}
+		}()
 	}
-	return "", errors.New("file path is too long")
+	defer func() {
+		close(stop)
+		cancel()
+	}()
+	type result struct {
+		output []byte
+		err    error
+	}
+	done := make(chan result, 1)
+	go func() {
+		runtime.LockOSThread()
+		if err := unix.PthreadFchdir(int(parent.Fd())); err != nil {
+			runtime.UnlockOSThread()
+			done <- result{err: fmt.Errorf("set probe directory: %w", err)}
+			return
+		}
+		got := result{}
+		if !sameChild(parent, program, name) {
+			got.err = errors.New("probe changed before execution")
+		} else {
+			cmd := exec.CommandContext(runCtx, "./"+name, args...)
+			cmd.Args[0] = rel
+			cmd.Env = env
+			got.output, got.err = cmd.CombinedOutput()
+		}
+		if err := unix.PthreadFchdir(-1); err != nil {
+			got.err = errors.Join(got.err, fmt.Errorf("restore probe directory: %w", err))
+			done <- got
+			return
+		}
+		runtime.UnlockOSThread()
+		done <- got
+	}()
+	got := <-done
+	if err := ctx.Err(); err != nil {
+		got.err = errors.Join(got.err, err)
+	}
+	return got.output, got.err
 }
