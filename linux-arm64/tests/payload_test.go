@@ -634,7 +634,7 @@ func TestLLVM22(t *testing.T) {
 
 func TestNDK29(t *testing.T) {
 	spec := catalog.Current()
-	if len(spec.Archives) != 5 {
+	if len(spec.Archives) != 6 {
 		t.Fatalf("archives=%d", len(spec.Archives))
 	}
 	ndk := spec.Archives[4]
@@ -849,5 +849,70 @@ func TestNDK29(t *testing.T) {
 			t.Fatal(err)
 		}
 		link(clang, source, filepath.Join(probe, "main-probe"))
+	}
+}
+
+func TestBazel(t *testing.T) {
+	work, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo := filepath.Dir(work)
+	lic := filepath.Join(repo, "licenses", "bazel", "LICENSE")
+	data, err := os.ReadFile(lic)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256(data)
+	if got := hex.EncodeToString(sum[:]); got != "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30" {
+		t.Fatalf("Bazel license SHA-256=%s", got)
+	}
+	info, err := os.Stat(lic)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm() != 0o644 {
+		t.Fatalf("Bazel license mode=%#o", info.Mode().Perm())
+	}
+	spec := catalog.Current()
+	if len(spec.Archives) != 6 {
+		t.Fatalf("archives=%d", len(spec.Archives))
+	}
+	bzl := spec.Archives[5]
+	if bzl.Name != "Bazel" || bzl.Version != "8.5.1" || bzl.Dir != "bazel851" {
+		t.Fatalf("archive=%+v", bzl)
+	}
+	if runtime.GOOS != "linux" || runtime.GOARCH != "arm64" {
+		return
+	}
+	spec.Archives = []catalog.Archive{bzl}
+	dest := filepath.Join(t.TempDir(), "tools")
+	if err := install.Run(context.Background(), repo, dest, spec); err != nil {
+		t.Fatal(err)
+	}
+	bazel := filepath.Join(dest, "bazel851", "bin", "bazel")
+	out, err := exec.Command(bazel, "--version").CombinedOutput()
+	if err != nil {
+		t.Fatalf("bazel version: %v: %s", err, out)
+	}
+	if strings.TrimSpace(string(out)) != "bazel 8.5.1" {
+		t.Fatalf("bazel version=%q", out)
+	}
+	bin, err := elf.Open(bazel)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bin.Machine != elf.EM_AARCH64 {
+		t.Errorf("bazel machine=%v", bin.Machine)
+	}
+	if err := bin.Close(); err != nil {
+		t.Fatal(err)
+	}
+	info, err = os.Stat(bazel)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm() != 0o755 {
+		t.Fatalf("bazel mode=%#o", info.Mode().Perm())
 	}
 }

@@ -9,7 +9,7 @@ func TestCatalog(t *testing.T) {
 	if spec.Host != "linux-arm64" {
 		t.Fatalf("host=%q", spec.Host)
 	}
-	if !spec.Ready || len(spec.Archives) != 5 {
+	if !spec.Ready || len(spec.Archives) != 6 {
 		t.Fatalf("ready=%v archives=%d", spec.Ready, len(spec.Archives))
 	}
 	archive := spec.Archives[0]
@@ -31,6 +31,10 @@ func TestCatalog(t *testing.T) {
 	archive = spec.Archives[4]
 	if archive.Name != "Android NDK" || archive.Version != "29.0.14206865" ||
 		archive.Dir != "ndk29" || !archive.DataOnly {
+		t.Fatalf("archive=%+v", archive)
+	}
+	archive = spec.Archives[5]
+	if archive.Name != "Bazel" || archive.Version != "8.5.1" || archive.Dir != "bazel851" {
 		t.Fatalf("archive=%+v", archive)
 	}
 	if err := Valid(spec); err != nil {
