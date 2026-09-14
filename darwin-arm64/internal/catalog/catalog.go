@@ -336,6 +336,30 @@ func Current() Spec {
 				Want:    []string{"GNU Make 4.3"},
 				Machine: Script,
 			}},
+		}, {
+			Name:    "Bazel",
+			Version: "8.5.1",
+			Dir:     "bazel851",
+			Format:  TarXZ,
+			SHA256:  "d58912c25ec81549ec4d1768ffe1134578dc0878f84190d3743a86aed2d2cf6b",
+			Prefix:  "bazel-8.5.1",
+			Parts: []Part{{
+				Path:   "payload/bazel851/bazel-8.5.1-darwin-arm64.tar.xz.part-000",
+				Size:   52001564,
+				SHA256: "d58912c25ec81549ec4d1768ffe1134578dc0878f84190d3743a86aed2d2cf6b",
+			}},
+			Files: []FileCheck{{
+				Path:   "LICENSE",
+				Size:   11358,
+				SHA256: "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+				Want:   []string{"Apache License"},
+			}},
+			Probes: []Probe{{
+				Path:    "bin/bazel",
+				Args:    []string{"--version"},
+				Want:    []string{"bazel 8.5.1"},
+				Machine: MachARM64,
+			}},
 		}},
 	}
 }
