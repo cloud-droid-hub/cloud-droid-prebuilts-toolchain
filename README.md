@@ -8,7 +8,7 @@ linux-arm64/
 linux-amd64/
 ```
 
-每个目录包含自己的安装程序、类型化归档目录、分片、许可证、测试与版本。平台目录固定发布Go 1.26.8、LLVM 19.1.7、LLVM 22、Temurin JDK 21.0.12.1+1和Android NDK r29 revision 29.0.14206865。macOS LLVM 22为22.1.8，Linux LLVM 22为Ubuntu 26.04的22.1.2；NDK内Clang与LLD主版本为21。
+每个目录包含自己的安装程序、类型化归档目录、分片、许可证、测试与版本。平台目录固定发布Go 1.26.8、LLVM 19.1.7、LLVM 22、Temurin JDK 21.0.12.1+1、Android NDK r29 revision 29.0.14206865和Bazel 8.5.1。macOS LLVM 22为22.1.8，Linux LLVM 22为Ubuntu 26.04的22.1.2；NDK内Clang与LLD主版本为21。
 
 归档以不超过90 MiB的普通Git对象保存，不使用Git LFS。`<host>/bin/cdh-toolchain`负责摘要校验、安全展开、宿主架构检查和原子发布。主项目把本仓放在`tools/toolchains/prebuilts/`，再把当前宿主工具展开到`output/toolchains/<host>/`；缺失、版本错误或架构不符都会直接失败，不会改用系统工具。
 

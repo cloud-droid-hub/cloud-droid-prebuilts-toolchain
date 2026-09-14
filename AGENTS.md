@@ -18,6 +18,7 @@
 - Android NDK固定为r29 revision`29.0.14206865`，NDK内Clang与LLD主版本固定为21。NDK内容只保留Android arm64目标所需的头文件、库、构建元数据、许可证与必要宿主工具。
 - Linux arm64没有Google官方宿主包时，只使用本目录LLVM 22与NDK目标sysroot、Clang 21 resource目录，不能运行其它宿主架构的NDK程序。
 - JDK固定为Temurin 21 LTS `21.0.12.1+1`。
+- Bazel固定为`8.5.1`，三个宿主目录都从本仓归档安装对应原生程序，构建时不得在线下载或改用系统Bazel。
 
 ## 归档与安装
 
