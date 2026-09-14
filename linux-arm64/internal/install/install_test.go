@@ -10,6 +10,8 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -38,6 +40,294 @@ func TestInstall(t *testing.T) {
 	}
 	if got != "bin/go" {
 		t.Fatalf("link=%q", got)
+	}
+}
+
+func TestOneDelete(t *testing.T) {
+	spec, repo := makeMany(t, 3)
+	dest := filepath.Join(t.TempDir(), "tools")
+	if err := Run(context.Background(), repo, dest, spec); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(filepath.Join(dest, spec.Archives[1].Dir)); err != nil {
+		t.Fatal(err)
+	}
+	dropParts(t, repo, spec.Archives[0], spec.Archives[2])
+	if err := Run(context.Background(), repo, dest, spec); err != nil {
+		t.Fatalf("补齐单个组件: %v", err)
+	}
+	if err := Check(context.Background(), dest, spec); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestManyDelete(t *testing.T) {
+	spec, repo := makeMany(t, 4)
+	dest := filepath.Join(t.TempDir(), "tools")
+	if err := Run(context.Background(), repo, dest, spec); err != nil {
+		t.Fatal(err)
+	}
+	for _, index := range []int{1, 3} {
+		if err := os.RemoveAll(filepath.Join(dest, spec.Archives[index].Dir)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	dropParts(t, repo, spec.Archives[0], spec.Archives[2])
+	if err := Run(context.Background(), repo, dest, spec); err != nil {
+		t.Fatalf("补齐多个组件: %v", err)
+	}
+	if err := Check(context.Background(), dest, spec); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestInterrupt(t *testing.T) {
+	t.Setenv("CDH_TOOLCHAIN_PROGRESS_INTERVAL", "1h")
+	spec, repo := makeMany(t, 3)
+	dest := filepath.Join(t.TempDir(), "tools")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	match := fmt.Sprintf("component=%q index=2 total=3 remaining=1 elapsed_seconds=0 state=installing", spec.Archives[1].Name)
+	output := &cancelOut{cancel: cancel, match: match}
+	err := RunTo(ctx, repo, dest, spec, output)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("error=%v want context canceled", err)
+	}
+	first := filepath.Join(dest, spec.Archives[0].Dir, "id.txt")
+	if _, err := os.Stat(first); err != nil {
+		t.Fatalf("已完成组件未保留: %v", err)
+	}
+	dropParts(t, repo, spec.Archives[0])
+	if err := Run(context.Background(), repo, dest, spec); err != nil {
+		t.Fatalf("中断后继续: %v", err)
+	}
+	if err := Check(context.Background(), dest, spec); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCancelEdge(t *testing.T) {
+	spec, repo := makeMany(t, 1)
+	dest := filepath.Join(t.TempDir(), "tools")
+	ctx := &stopCtx{Context: context.Background(), limit: 4, done: make(chan struct{})}
+	err := Run(ctx, repo, dest, spec)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("error=%v want context canceled", err)
+	}
+	component := filepath.Join(dest, spec.Archives[0].Dir)
+	if _, err := os.Lstat(component); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("取消后的当前组件已发布: %v", err)
+	}
+}
+
+func TestRootSwap(t *testing.T) {
+	t.Setenv("CDH_TOOLCHAIN_PROGRESS_INTERVAL", "1h")
+	spec, repo := makeMany(t, 1)
+	parent := t.TempDir()
+	dest := filepath.Join(parent, "tools")
+	moved := filepath.Join(parent, "tools-moved")
+	outside := t.TempDir()
+	if err := os.Mkdir(dest, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	output := &swapOut{dest: dest, moved: moved, outside: outside}
+	if err := RunTo(context.Background(), repo, dest, spec, output); err == nil {
+		t.Fatal("目标根被替换后安装仍成功")
+	}
+	if output.err != nil {
+		t.Fatalf("替换测试目标: %v", output.err)
+	}
+	outsideComp := filepath.Join(outside, spec.Archives[0].Dir)
+	if _, err := os.Lstat(outsideComp); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("组件写入目标根之外: %v", err)
+	}
+}
+
+func TestSourceSwap(t *testing.T) {
+	spec, repo := makeMany(t, 1)
+	parent := t.TempDir()
+	dest := filepath.Join(parent, "tools")
+	ctx := &sourceSwap{
+		Context: context.Background(), parent: parent, dir: spec.Archives[0].Dir,
+		body: []byte("Tool 1 1.26.1\n"),
+	}
+	if err := Run(ctx, repo, dest, spec); err == nil {
+		t.Fatal("暂存源替换后安装仍成功")
+	}
+	if ctx.err != nil || !ctx.swapped {
+		t.Fatalf("替换暂存源: swapped=%t error=%v", ctx.swapped, ctx.err)
+	}
+	marker := filepath.Join(dest, spec.Archives[0].Dir, "attacker.txt")
+	if _, err := os.Lstat(marker); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("未经校验的暂存目录已发布: %v", err)
+	}
+}
+
+func TestProbeSwap(t *testing.T) {
+	spec, repo := makeSample(t)
+	parent := t.TempDir()
+	dest := filepath.Join(parent, "tools")
+	if err := Run(context.Background(), repo, dest, spec); err != nil {
+		t.Fatal(err)
+	}
+	outside := t.TempDir()
+	probeDir := filepath.Join(outside, spec.Archives[0].Dir, "bin")
+	if err := os.MkdirAll(probeDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	marker := filepath.Join(outside, "executed")
+	script := "#!/bin/sh\ntouch \"$MARKER\"\necho go1.26.8\n"
+	if err := os.WriteFile(filepath.Join(probeDir, "go"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	spec.Archives[0].Probes[0].Env = []string{"MARKER=" + marker}
+	ctx := &probeSwap{
+		Context: context.Background(), dest: dest,
+		moved: filepath.Join(parent, "tools-moved"), outside: outside,
+	}
+	if err := Run(ctx, repo, dest, spec); err == nil {
+		t.Fatal("目标根替换后校验仍成功")
+	}
+	if ctx.err != nil || !ctx.swapped {
+		t.Fatalf("替换校验目标: swapped=%t error=%v", ctx.swapped, ctx.err)
+	}
+	if _, err := os.Lstat(marker); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("执行了替换目标中的探针: %v", err)
+	}
+}
+
+func TestUnsafeParent(t *testing.T) {
+	spec, repo := makeMany(t, 1)
+	parent := t.TempDir()
+	if err := os.Chmod(parent, 0o777); err != nil {
+		t.Fatal(err)
+	}
+	dest := filepath.Join(parent, "tools")
+	if err := Run(context.Background(), repo, dest, spec); err == nil {
+		t.Fatal("可由其它用户写入的父目录被接受")
+	}
+	if _, err := os.Lstat(dest); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("拒绝不安全父目录前已创建目标: %v", err)
+	}
+}
+
+func TestSafeCleanup(t *testing.T) {
+	parent := t.TempDir()
+	work := filepath.Join(parent, ".cdh-toolchain-work")
+	original := filepath.Join(work, "component", "payload")
+	if err := os.MkdirAll(original, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(original, "data"), []byte("temporary\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	root, err := openRoot(work)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+	moved := work + ".moved"
+	if err := os.Rename(work, moved); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(work, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	keep := filepath.Join(work, "keep.txt")
+	if err := os.WriteFile(keep, []byte("user\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	clearTemp(root, work)
+	if got, err := os.ReadFile(keep); err != nil || string(got) != "user\n" {
+		t.Fatalf("替换路径内容=%q error=%v", got, err)
+	}
+	if entries, err := os.ReadDir(moved); err != nil || len(entries) != 0 {
+		t.Fatalf("原始暂存目录未清空: entries=%v error=%v", entries, err)
+	}
+}
+
+func TestKeepInvalid(t *testing.T) {
+	spec, repo := makeMany(t, 2)
+	dest := filepath.Join(t.TempDir(), "tools")
+	if err := Run(context.Background(), repo, dest, spec); err != nil {
+		t.Fatal(err)
+	}
+	identity := filepath.Join(dest, spec.Archives[0].Dir, "id.txt")
+	changed := []byte("user-edited\n")
+	if err := os.WriteFile(identity, changed, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	note := filepath.Join(dest, "user-note.txt")
+	if err := os.WriteFile(note, []byte("keep\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := Run(context.Background(), repo, dest, spec); err == nil {
+		t.Fatal("校验失败的已有组件被覆盖")
+	}
+	got, err := os.ReadFile(identity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, changed) {
+		t.Fatalf("已有组件内容=%q", got)
+	}
+	if got, err := os.ReadFile(note); err != nil || string(got) != "keep\n" {
+		t.Fatalf("用户文件=%q error=%v", got, err)
+	}
+}
+
+func TestProgress(t *testing.T) {
+	t.Setenv("CDH_TOOLCHAIN_PROGRESS_INTERVAL", "1h")
+	spec, repo := makeMany(t, 2)
+	dest := filepath.Join(t.TempDir(), "tools")
+	var output bytes.Buffer
+	if err := RunTo(context.Background(), repo, dest, spec, &output); err != nil {
+		t.Fatal(err)
+	}
+	for _, state := range []string{"checking", "installing", "installed"} {
+		want := fmt.Sprintf("component=%q index=1 total=2 remaining=1 elapsed_seconds=0 state=%s", spec.Archives[0].Name, state)
+		if !strings.Contains(output.String(), want) {
+			t.Fatalf("progress misses %q:\n%s", want, output.String())
+		}
+	}
+	output.Reset()
+	if err := RunTo(context.Background(), repo, dest, spec, &output); err != nil {
+		t.Fatal(err)
+	}
+	want := fmt.Sprintf("component=%q index=2 total=2 remaining=0 elapsed_seconds=0 state=skipped", spec.Archives[1].Name)
+	if !strings.Contains(output.String(), want) {
+		t.Fatalf("resume progress misses %q:\n%s", want, output.String())
+	}
+	if strings.Contains(output.String(), "state=installing") {
+		t.Fatalf("verified components reinstalled:\n%s", output.String())
+	}
+}
+
+func TestHeartbeat(t *testing.T) {
+	t.Setenv("CDH_TOOLCHAIN_PROGRESS_INTERVAL", "1ms")
+	spec, repo := makeSized(t, []int{16 << 20})
+	var output bytes.Buffer
+	if err := RunTo(context.Background(), repo, filepath.Join(t.TempDir(), "tools"), spec, &output); err != nil {
+		t.Fatal(err)
+	}
+	if count := strings.Count(output.String(), "state=installing"); count < 2 {
+		t.Fatalf("install heartbeats=%d want at least 2:\n%s", count, output.String())
+	}
+	want := "index=1 total=1 remaining=0 elapsed_seconds="
+	if !strings.Contains(output.String(), want) {
+		t.Fatalf("heartbeat misses %q:\n%s", want, output.String())
+	}
+}
+
+func TestBadInterval(t *testing.T) {
+	t.Setenv("CDH_TOOLCHAIN_PROGRESS_INTERVAL", "invalid")
+	spec, repo := makeMany(t, 1)
+	dest := filepath.Join(t.TempDir(), "tools")
+	if err := RunTo(context.Background(), repo, dest, spec, io.Discard); err == nil {
+		t.Fatal("非法进度间隔未被拒绝")
+	}
+	if _, err := os.Lstat(dest); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("失败前创建了目标: %v", err)
 	}
 }
 
@@ -187,7 +477,7 @@ func TestPartSwap(t *testing.T) {
 	if err := os.WriteFile(part, bad, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := reader.finish(spec.Archives[0].SHA256); err != nil {
+	if err := reader.finish(context.Background(), spec.Archives[0].SHA256); err != nil {
 		t.Fatalf("已打开分片受路径替换影响: %v", err)
 	}
 }
@@ -363,7 +653,7 @@ func TestOldKeep(t *testing.T) {
 	}
 }
 
-func TestOldReplace(t *testing.T) {
+func TestOldKeepExtra(t *testing.T) {
 	spec, repo := makeSample(t)
 	dest := filepath.Join(t.TempDir(), "tools")
 	if err := os.MkdirAll(dest, 0o755); err != nil {
@@ -376,8 +666,9 @@ func TestOldReplace(t *testing.T) {
 	if err := Run(context.Background(), repo, dest, spec); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(marker); !os.IsNotExist(err) {
-		t.Fatalf("旧目录仍位于安装目标: %v", err)
+	content, err := os.ReadFile(marker)
+	if err != nil || string(content) != "old\n" {
+		t.Fatalf("用户文件=%q error=%v", content, err)
 	}
 	if _, err := os.Stat(filepath.Join(dest, "go126", "bin", "go")); err != nil {
 		t.Fatal(err)
@@ -538,6 +829,200 @@ func makeSample(t *testing.T) (catalog.Spec, string) {
 func makeSpec(t *testing.T, entries []tarItem) (catalog.Spec, string) {
 	t.Helper()
 	return makePack(t, entries, catalog.TarGzip)
+}
+
+func makeMany(t *testing.T, count int) (catalog.Spec, string) {
+	t.Helper()
+	return makeSized(t, make([]int, count))
+}
+
+func makeSized(t *testing.T, sizes []int) (catalog.Spec, string) {
+	t.Helper()
+	repo := t.TempDir()
+	spec := catalog.Spec{Host: runtime.GOOS + "-" + runtime.GOARCH, Ready: true}
+	for index, size := range sizes {
+		name := fmt.Sprintf("Tool %d", index+1)
+		version := fmt.Sprintf("1.26.%d", index+1)
+		dir := fmt.Sprintf("tool%d", index+1)
+		prefix := fmt.Sprintf("payload%d", index+1)
+		body := []byte(name + " " + version + "\n")
+		if size > len(body) {
+			body = bytes.Repeat([]byte{'x'}, size)
+			copy(body, []byte(name+" "+version+"\n"))
+		}
+		var data bytes.Buffer
+		pack := gzip.NewWriter(&data)
+		tw := tar.NewWriter(pack)
+		if err := tw.WriteHeader(&tar.Header{Name: prefix + "/", Typeflag: tar.TypeDir, Mode: 0o755}); err != nil {
+			t.Fatal(err)
+		}
+		if err := tw.WriteHeader(&tar.Header{Name: prefix + "/id.txt", Typeflag: tar.TypeReg, Mode: 0o644, Size: int64(len(body))}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := tw.Write(body); err != nil {
+			t.Fatal(err)
+		}
+		if err := tw.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if err := pack.Close(); err != nil {
+			t.Fatal(err)
+		}
+		part := filepath.ToSlash(filepath.Join("payload", dir, "archive.tar.gz.part-000"))
+		partPath := filepath.Join(repo, filepath.FromSlash(part))
+		if err := os.MkdirAll(filepath.Dir(partPath), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(partPath, data.Bytes(), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		spec.Archives = append(spec.Archives, catalog.Archive{
+			Name: name, Version: version, Dir: dir, Format: catalog.TarGzip,
+			SHA256: sumHex(data.Bytes()), Prefix: prefix, DataOnly: true,
+			Parts: []catalog.Part{{Path: part, Size: int64(data.Len()), SHA256: sumHex(data.Bytes())}},
+			Files: []catalog.FileCheck{{Path: "id.txt", Size: int64(len(body)), SHA256: sumHex(body), Want: []string{version}}},
+		})
+	}
+	return spec, repo
+}
+
+func dropParts(t *testing.T, repo string, archives ...catalog.Archive) {
+	t.Helper()
+	for _, archive := range archives {
+		for _, part := range archive.Parts {
+			if err := os.Remove(filepath.Join(repo, filepath.FromSlash(part.Path))); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+}
+
+type stopCtx struct {
+	context.Context
+	calls   int
+	limit   int
+	stopped bool
+	done    chan struct{}
+}
+
+func (ctx *stopCtx) Done() <-chan struct{} {
+	return ctx.done
+}
+
+type swapOut struct {
+	bytes.Buffer
+	dest    string
+	moved   string
+	outside string
+	swapped bool
+	err     error
+}
+
+type sourceSwap struct {
+	context.Context
+	parent  string
+	dir     string
+	body    []byte
+	swapped bool
+	err     error
+}
+
+func (ctx *sourceSwap) Err() error {
+	if ctx.swapped || ctx.err != nil {
+		return nil
+	}
+	workDirs, err := filepath.Glob(filepath.Join(ctx.parent, ".cdh-toolchain-*"))
+	if err != nil {
+		ctx.err = err
+		return nil
+	}
+	for _, work := range workDirs {
+		got, err := os.ReadFile(filepath.Join(work, ctx.dir, "id.txt"))
+		if err != nil || !bytes.Equal(got, ctx.body) {
+			continue
+		}
+		moved := work + ".checked"
+		if err := os.Rename(work, moved); err != nil {
+			ctx.err = err
+			return nil
+		}
+		component := filepath.Join(work, ctx.dir)
+		if err := os.MkdirAll(component, 0o755); err != nil {
+			ctx.err = err
+			return nil
+		}
+		if err := os.WriteFile(filepath.Join(component, "id.txt"), ctx.body, 0o644); err != nil {
+			ctx.err = err
+			return nil
+		}
+		ctx.err = os.WriteFile(filepath.Join(component, "attacker.txt"), []byte("unverified\n"), 0o644)
+		ctx.swapped = ctx.err == nil
+		return nil
+	}
+	return nil
+}
+
+type probeSwap struct {
+	context.Context
+	dest    string
+	moved   string
+	outside string
+	swapped bool
+	err     error
+}
+
+func (ctx *probeSwap) Err() error {
+	if ctx.swapped || ctx.err != nil {
+		return nil
+	}
+	if err := os.Rename(ctx.dest, ctx.moved); err != nil {
+		ctx.err = err
+		return nil
+	}
+	ctx.err = os.Symlink(ctx.outside, ctx.dest)
+	ctx.swapped = ctx.err == nil
+	return nil
+}
+
+func (output *swapOut) Write(data []byte) (int, error) {
+	count, err := output.Buffer.Write(data)
+	if output.swapped || !strings.Contains(string(data), "state=installing") {
+		return count, err
+	}
+	output.swapped = true
+	if renameErr := os.Rename(output.dest, output.moved); renameErr != nil {
+		output.err = renameErr
+		return count, err
+	}
+	output.err = os.Symlink(output.outside, output.dest)
+	return count, err
+}
+
+func (ctx *stopCtx) Err() error {
+	if ctx.stopped {
+		return context.Canceled
+	}
+	ctx.calls++
+	if ctx.calls >= ctx.limit {
+		ctx.stopped = true
+		close(ctx.done)
+		return context.Canceled
+	}
+	return nil
+}
+
+type cancelOut struct {
+	bytes.Buffer
+	cancel context.CancelFunc
+	match  string
+}
+
+func (output *cancelOut) Write(data []byte) (int, error) {
+	count, err := output.Buffer.Write(data)
+	if strings.Contains(string(data), output.match) {
+		output.cancel()
+	}
+	return count, err
 }
 
 func probeItems(entries []tarItem) []tarItem {

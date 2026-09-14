@@ -20,14 +20,24 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"syscall"
+	"time"
 
 	"github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/catalog"
 	"github.com/ulikunitz/xz"
+	"golang.org/x/sys/unix"
 )
 
-// Run installs every archive and publishes the complete directory atomically.
+const fenceData = "module cdh.invalid/toolchains\n\ngo 1.26.0\n"
+
+// Run installs missing archives and preserves verified components.
 func Run(ctx context.Context, repo, dest string, spec catalog.Spec) error {
+	return RunTo(ctx, repo, dest, spec, io.Discard)
+}
+
+// RunTo installs missing archives and reports component progress.
+func RunTo(ctx context.Context, repo, dest string, spec catalog.Spec, output io.Writer) error {
 	if err := catalog.Valid(spec); err != nil {
 		return err
 	}
@@ -37,7 +47,11 @@ func Run(ctx context.Context, repo, dest string, spec catalog.Spec) error {
 	if err := checkHost(spec.Host); err != nil {
 		return err
 	}
-	repo, err := filepath.Abs(repo)
+	progress, err := newProgress(output)
+	if err != nil {
+		return err
+	}
+	repo, err = filepath.Abs(repo)
 	if err != nil {
 		return fmt.Errorf("resolve repository: %w", err)
 	}
@@ -56,52 +70,371 @@ func Run(ctx context.Context, repo, dest string, spec catalog.Spec) error {
 	if holds {
 		return fmt.Errorf("destination contains repository: %s", dest)
 	}
-	parent := filepath.Dir(dest)
-	work, err := os.MkdirTemp(parent, ".cdh-toolchain-")
+	if err := prepRoot(dest); err != nil {
+		return err
+	}
+	root, err := openRoot(dest)
 	if err != nil {
-		return fmt.Errorf("create install directory: %w", err)
+		return err
 	}
-	defer os.RemoveAll(work)
-	if err := os.Chmod(work, 0o700); err != nil {
-		return fmt.Errorf("secure install directory: %w", err)
+	defer root.Close()
+	if err := checkFence(ctx, root); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
 	}
-	next := filepath.Join(work, "next")
-	if err := os.Mkdir(next, 0o755); err != nil {
-		return fmt.Errorf("create new toolchain root: %w", err)
-	}
-	if err := os.Chmod(next, 0o755); err != nil {
-		return fmt.Errorf("set new toolchain root mode: %w", err)
-	}
-	for _, archive := range spec.Archives {
-		if err := unpack(ctx, repo, next, archive); err != nil {
+	total := len(spec.Archives)
+	for offset, archive := range spec.Archives {
+		item := progItem{
+			component: archive.Name,
+			index:     offset + 1,
+			total:     total,
+			remaining: total - offset - 1,
+		}
+		started := time.Now()
+		progress.line(item, "checking", started)
+		if err := progress.result(); err != nil {
+			return err
+		}
+		if err := matchRoot(root, dest); err != nil {
+			return err
+		}
+		component, openErr := openRel(root, archive.Dir, false)
+		if openErr == nil {
+			checkErr := checkComp(ctx, component, archive)
+			closeErr := component.Close()
+			if checkErr != nil {
+				return fmt.Errorf("existing component %s is invalid: %w", archive.Name, checkErr)
+			}
+			if closeErr != nil {
+				return fmt.Errorf("close component %s: %w", archive.Name, closeErr)
+			}
+			if err := matchRoot(root, dest); err != nil {
+				return err
+			}
+			progress.line(item, "skipped", started)
+			if err := progress.result(); err != nil {
+				return err
+			}
+			continue
+		} else if !errors.Is(openErr, os.ErrNotExist) {
+			return fmt.Errorf("inspect component %s: %w", archive.Name, openErr)
+		}
+		stop := progress.startBeat(item, started)
+		if err := matchRoot(root, dest); err != nil {
+			stop()
+			return err
+		}
+		installErr := installArc(ctx, repo, dest, root, archive)
+		stop()
+		if err := progress.result(); err != nil {
+			return err
+		}
+		if installErr != nil {
+			return fmt.Errorf("install %s: %w", archive.Name, installErr)
+		}
+		progress.line(item, "installed", started)
+		if err := progress.result(); err != nil {
 			return fmt.Errorf("install %s: %w", archive.Name, err)
 		}
 	}
-	fence := filepath.Join(next, "go.mod")
-	if err := os.WriteFile(fence, []byte("module cdh.invalid/toolchains\n\ngo 1.26.0\n"), 0o644); err != nil {
-		return fmt.Errorf("write module boundary: %w", err)
-	}
-	if err := os.Chmod(fence, 0o644); err != nil {
-		return fmt.Errorf("set module boundary mode: %w", err)
-	}
-	if err := os.Chmod(next, 0o755); err != nil {
-		return fmt.Errorf("set new toolchain root mode: %w", err)
-	}
-	if err := checkAt(ctx, next, spec); err != nil {
+	if err := ctx.Err(); err != nil {
 		return err
 	}
-	if info, statErr := os.Lstat(dest); statErr == nil {
-		if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("destination is not a regular directory: %s", dest)
+	if err := matchRoot(root, dest); err != nil {
+		return err
+	}
+	if err := putFence(ctx, root, dest); err != nil {
+		return err
+	}
+	if err := matchRoot(root, dest); err != nil {
+		return err
+	}
+	if err := checkAt(ctx, root, spec); err != nil {
+		return err
+	}
+	return nil
+}
+
+type progItem struct {
+	component string
+	index     int
+	total     int
+	remaining int
+}
+
+type progressOut struct {
+	output   io.Writer
+	interval time.Duration
+	mu       sync.Mutex
+	err      error
+}
+
+func newProgress(output io.Writer) (*progressOut, error) {
+	if output == nil {
+		return nil, errors.New("progress output is nil")
+	}
+	interval := 5 * time.Second
+	if value := os.Getenv("CDH_TOOLCHAIN_PROGRESS_INTERVAL"); value != "" {
+		parsed, err := time.ParseDuration(value)
+		if err != nil || parsed <= 0 {
+			return nil, fmt.Errorf("invalid CDH_TOOLCHAIN_PROGRESS_INTERVAL: %q", value)
 		}
-		if err := swapDirs(next, dest); err != nil {
-			return fmt.Errorf("replace toolchains: %w", err)
+		interval = parsed
+	}
+	return &progressOut{output: output, interval: interval}, nil
+}
+
+func (progress *progressOut) line(item progItem, state string, started time.Time) {
+	progress.mu.Lock()
+	defer progress.mu.Unlock()
+	if progress.err != nil {
+		return
+	}
+	elapsed := int64(time.Since(started) / time.Second)
+	_, progress.err = fmt.Fprintf(progress.output,
+		"toolchain_progress component=%q index=%d total=%d remaining=%d elapsed_seconds=%d state=%s\n",
+		item.component, item.index, item.total, item.remaining, elapsed, state)
+}
+
+func (progress *progressOut) startBeat(item progItem, started time.Time) func() {
+	progress.line(item, "installing", started)
+	stop := make(chan struct{})
+	done := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(progress.interval)
+		defer ticker.Stop()
+		defer close(done)
+		for {
+			select {
+			case <-ticker.C:
+				progress.line(item, "installing", started)
+			case <-stop:
+				return
+			}
 		}
-	} else if !errors.Is(statErr, os.ErrNotExist) {
-		return fmt.Errorf("inspect destination: %w", statErr)
-	} else {
-		if err := os.Rename(next, dest); err != nil {
-			return fmt.Errorf("publish toolchains: %w", err)
+	}()
+	return func() {
+		close(stop)
+		<-done
+	}
+}
+
+func (progress *progressOut) result() error {
+	progress.mu.Lock()
+	defer progress.mu.Unlock()
+	if progress.err != nil {
+		return fmt.Errorf("write install progress: %w", progress.err)
+	}
+	return nil
+}
+
+func prepRoot(dest string) error {
+	info, err := os.Lstat(dest)
+	if errors.Is(err, os.ErrNotExist) {
+		if err := os.Mkdir(dest, 0o755); err != nil {
+			return fmt.Errorf("create toolchain root: %w", err)
+		}
+		if err := os.Chmod(dest, 0o755); err != nil {
+			return fmt.Errorf("set toolchain root mode: %w", err)
+		}
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("inspect toolchain root: %w", err)
+	}
+	if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("toolchain root is not a regular directory: %s", dest)
+	}
+	if info.Mode().Perm() != 0o755 {
+		return fmt.Errorf("toolchain root mode is %#o, want 0755", info.Mode().Perm())
+	}
+	return nil
+}
+
+func openRoot(dest string) (*os.File, error) {
+	pathInfo, err := os.Lstat(dest)
+	if err != nil {
+		return nil, fmt.Errorf("inspect toolchain root: %w", err)
+	}
+	root, err := os.Open(dest)
+	if err != nil {
+		return nil, fmt.Errorf("open toolchain root: %w", err)
+	}
+	openInfo, err := root.Stat()
+	if err != nil || !openInfo.IsDir() || !os.SameFile(pathInfo, openInfo) {
+		root.Close()
+		return nil, fmt.Errorf("toolchain root changed while opening: %s", dest)
+	}
+	return root, nil
+}
+
+func matchRoot(root *os.File, dest string) error {
+	pathInfo, err := os.Lstat(dest)
+	if err != nil {
+		return fmt.Errorf("inspect toolchain root identity: %w", err)
+	}
+	openInfo, err := root.Stat()
+	if err != nil {
+		return fmt.Errorf("inspect opened toolchain root: %w", err)
+	}
+	if !pathInfo.IsDir() || pathInfo.Mode()&os.ModeSymlink != 0 || !os.SameFile(pathInfo, openInfo) {
+		return fmt.Errorf("toolchain root changed during install: %s", dest)
+	}
+	return nil
+}
+
+func installArc(ctx context.Context, repo, dest string, root *os.File, archive catalog.Archive) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	work, err := os.MkdirTemp(filepath.Dir(dest), ".cdh-toolchain-")
+	if err != nil {
+		return fmt.Errorf("create install directory: %w", err)
+	}
+	if err := os.Chmod(work, 0o700); err != nil {
+		return fmt.Errorf("secure install directory: %w", err)
+	}
+	workRoot, err := openRoot(work)
+	if err != nil {
+		return err
+	}
+	defer workRoot.Close()
+	defer clearTemp(workRoot, work)
+	if err := unpack(ctx, repo, work, archive); err != nil {
+		return err
+	}
+	if err := matchRoot(workRoot, work); err != nil {
+		return err
+	}
+	if err := checkArc(ctx, workRoot, archive); err != nil {
+		return err
+	}
+	if err := matchRoot(workRoot, work); err != nil {
+		return err
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if err := moveNew(workRoot, archive.Dir, root); err != nil {
+		return fmt.Errorf("publish component without replacement: %w", err)
+	}
+	return nil
+}
+
+func checkFence(ctx context.Context, root *os.File) error {
+	file, err := openRel(root, "go.mod", false)
+	if err != nil {
+		return fmt.Errorf("inspect module boundary: %w", err)
+	}
+	info, err := file.Stat()
+	if err != nil {
+		file.Close()
+		return fmt.Errorf("inspect module boundary: %w", err)
+	}
+	if !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 || info.Mode().Perm() != 0o644 {
+		file.Close()
+		return errors.New("module boundary is invalid")
+	}
+	data, readErr := io.ReadAll(io.LimitReader(&ctxRead{ctx: ctx, reader: file}, int64(len(fenceData)+1)))
+	closeErr := file.Close()
+	if readErr != nil {
+		return fmt.Errorf("read module boundary: %w", readErr)
+	}
+	if closeErr != nil {
+		return fmt.Errorf("close module boundary: %w", closeErr)
+	}
+	if string(data) != fenceData {
+		return errors.New("module boundary content is invalid")
+	}
+	return nil
+}
+
+func putFence(ctx context.Context, root *os.File, dest string) error {
+	if err := checkFence(ctx, root); err == nil {
+		return nil
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	work, err := os.MkdirTemp(filepath.Dir(dest), ".cdh-toolchain-fence-")
+	if err != nil {
+		return fmt.Errorf("create module boundary directory: %w", err)
+	}
+	if err := os.Chmod(work, 0o700); err != nil {
+		return fmt.Errorf("secure module boundary directory: %w", err)
+	}
+	workRoot, err := openRoot(work)
+	if err != nil {
+		return err
+	}
+	defer workRoot.Close()
+	defer clearTemp(workRoot, work)
+	name := filepath.Join(work, "go.mod")
+	file, err := os.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if err != nil {
+		return fmt.Errorf("write module boundary: %w", err)
+	}
+	_, writeErr := file.WriteString(fenceData)
+	closeErr := file.Close()
+	if writeErr != nil {
+		return fmt.Errorf("write module boundary: %w", writeErr)
+	}
+	if closeErr != nil {
+		return fmt.Errorf("close module boundary: %w", closeErr)
+	}
+	if err := os.Chmod(name, 0o644); err != nil {
+		return fmt.Errorf("set module boundary mode: %w", err)
+	}
+	if err := matchRoot(workRoot, work); err != nil {
+		return err
+	}
+	if err := checkFence(ctx, workRoot); err != nil {
+		return err
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if err := moveNew(workRoot, "go.mod", root); err != nil {
+		return fmt.Errorf("publish module boundary without replacement: %w", err)
+	}
+	return nil
+}
+
+func clearTemp(root *os.File, path string) {
+	if clearDir(root) != nil {
+		return
+	}
+	if matchRoot(root, path) == nil {
+		_ = unix.Unlinkat(unix.AT_FDCWD, path, unix.AT_REMOVEDIR)
+	}
+}
+
+func clearDir(root *os.File) error {
+	entries, err := root.ReadDir(-1)
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() {
+			fd, err := unix.Openat(int(root.Fd()), name, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+			if err != nil {
+				return err
+			}
+			child := os.NewFile(uintptr(fd), name)
+			clearErr := clearDir(child)
+			closeErr := child.Close()
+			if clearErr != nil {
+				return clearErr
+			}
+			if closeErr != nil {
+				return closeErr
+			}
+			if err := unix.Unlinkat(int(root.Fd()), name, unix.AT_REMOVEDIR); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := unix.Unlinkat(int(root.Fd()), name, 0); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -118,82 +451,135 @@ func Check(ctx context.Context, root string, spec catalog.Spec) error {
 	if err := checkHost(spec.Host); err != nil {
 		return err
 	}
-	return checkAt(ctx, root, spec)
+	abs, err := filepath.Abs(root)
+	if err != nil {
+		return fmt.Errorf("resolve toolchain root: %w", err)
+	}
+	if err := safeParents(filepath.Dir(abs)); err != nil {
+		return err
+	}
+	opened, err := openRoot(abs)
+	if err != nil {
+		return err
+	}
+	defer opened.Close()
+	return checkAt(ctx, opened, spec)
 }
 
-func checkAt(ctx context.Context, root string, spec catalog.Spec) error {
-	info, err := os.Lstat(root)
+func checkAt(ctx context.Context, root *os.File, spec catalog.Spec) error {
+	info, err := root.Stat()
 	if err != nil {
 		return fmt.Errorf("inspect toolchain root: %w", err)
 	}
-	if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
-		return fmt.Errorf("toolchain root is not a regular directory: %s", root)
+	if !info.IsDir() || info.Mode().Perm() != 0o755 || !safeOwner(info) {
+		return errors.New("toolchain root is not a regular directory")
+	}
+	if err := checkFence(ctx, root); err != nil {
+		return err
 	}
 	for _, archive := range spec.Archives {
-		archiveRoot := filepath.Join(root, archive.Dir)
-		info, err := os.Lstat(archiveRoot)
-		if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("toolchain directory is invalid: %s", archiveRoot)
+		if err := checkArc(ctx, root, archive); err != nil {
+			return err
 		}
-		for _, check := range archive.Files {
-			pathName, err := safeJoin(archiveRoot, check.Path)
-			if err != nil {
-				return fmt.Errorf("invalid identity file for %s: %w", archive.Name, err)
-			}
-			realRoot, rootErr := filepath.EvalSymlinks(archiveRoot)
-			realFile, fileErr := filepath.EvalSymlinks(pathName)
-			if rootErr != nil || fileErr != nil || !inTree(realRoot, realFile) {
-				return fmt.Errorf("identity file contains a linked path for %s: %s", archive.Name, check.Path)
-			}
-			info, err := os.Lstat(pathName)
-			if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 || info.Size() != check.Size {
-				return fmt.Errorf("identity file is invalid for %s: %s", archive.Name, check.Path)
-			}
-			file, err := os.Open(pathName)
-			if err != nil {
-				return fmt.Errorf("open identity file for %s: %w", archive.Name, err)
-			}
-			openInfo, statErr := file.Stat()
-			if statErr != nil || !openInfo.Mode().IsRegular() || openInfo.Size() != check.Size || !os.SameFile(info, openInfo) {
-				file.Close()
-				return fmt.Errorf("identity file changed while opening for %s: %s", archive.Name, check.Path)
-			}
-			data, readErr := io.ReadAll(io.LimitReader(file, check.Size+1))
-			closeErr := file.Close()
-			if readErr != nil || closeErr != nil || int64(len(data)) != check.Size {
-				return fmt.Errorf("read identity file for %s: %s", archive.Name, check.Path)
-			}
-			sum := sha256.Sum256(data)
-			if hex.EncodeToString(sum[:]) != check.SHA256 {
-				return fmt.Errorf("identity file checksum mismatch for %s: %s", archive.Name, check.Path)
-			}
-			for _, want := range check.Want {
-				if !strings.Contains(string(data), want) {
-					return fmt.Errorf("identity file for %s misses %q", archive.Name, want)
-				}
-			}
+	}
+	return nil
+}
+
+func checkArc(ctx context.Context, root *os.File, archive catalog.Archive) error {
+	component, err := openRel(root, archive.Dir, false)
+	if err != nil {
+		return fmt.Errorf("open component %s: %w", archive.Name, err)
+	}
+	defer component.Close()
+	return checkComp(ctx, component, archive)
+}
+
+func checkComp(ctx context.Context, root *os.File, archive catalog.Archive) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	info, err := root.Stat()
+	if err != nil || !info.IsDir() || info.Mode().Perm() != 0o755 || !safeOwner(info) {
+		return fmt.Errorf("toolchain directory is invalid: %s", archive.Dir)
+	}
+	for _, check := range archive.Files {
+		file, err := openRel(root, check.Path, false)
+		if err != nil {
+			return fmt.Errorf("invalid identity file for %s: %w", archive.Name, err)
 		}
-		for _, probe := range archive.Probes {
-			program, arg0, err := safeExec(archiveRoot, probe.Path)
-			if err != nil {
-				return fmt.Errorf("invalid probe for %s: %w", archive.Name, err)
-			}
-			if err := checkMachine(program, probe.Machine); err != nil {
-				return fmt.Errorf("probe machine for %s: %w", archive.Name, err)
-			}
-			cmd := exec.CommandContext(ctx, program, probe.Args...)
-			cmd.Args[0] = arg0
-			cmd.Env = mergeEnv(os.Environ(), probe.Env)
-			output, err := cmd.CombinedOutput()
-			if err != nil {
-				return fmt.Errorf("probe %s: %w: %s", archive.Name, err, strings.TrimSpace(string(output)))
-			}
-			for _, want := range probe.Want {
-				if !strings.Contains(string(output), want) {
-					return fmt.Errorf("probe %s output misses %q", archive.Name, want)
-				}
+		info, statErr := file.Stat()
+		if statErr != nil || !info.Mode().IsRegular() || info.Size() != check.Size {
+			file.Close()
+			return fmt.Errorf("identity file is invalid for %s: %s", archive.Name, check.Path)
+		}
+		data, readErr := io.ReadAll(io.LimitReader(&ctxRead{ctx: ctx, reader: file}, check.Size+1))
+		closeErr := file.Close()
+		if readErr != nil || closeErr != nil || int64(len(data)) != check.Size {
+			return fmt.Errorf("read identity file for %s: %s", archive.Name, check.Path)
+		}
+		sum := sha256.Sum256(data)
+		if hex.EncodeToString(sum[:]) != check.SHA256 {
+			return fmt.Errorf("identity file checksum mismatch for %s: %s", archive.Name, check.Path)
+		}
+		for _, want := range check.Want {
+			if !strings.Contains(string(data), want) {
+				return fmt.Errorf("identity file for %s misses %q", archive.Name, want)
 			}
 		}
+	}
+	for _, probe := range archive.Probes {
+		if err := runProbe(ctx, root, archive.Name, probe); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func runProbe(ctx context.Context, root *os.File, name string, probe catalog.Probe) error {
+	program, err := openRel(root, probe.Path, true)
+	if err != nil {
+		return fmt.Errorf("invalid probe for %s: %w", name, err)
+	}
+	defer program.Close()
+	programPath, err := fdPath(program)
+	if err != nil {
+		return fmt.Errorf("resolve probe for %s: %w", name, err)
+	}
+	if err := safeParents(filepath.Dir(programPath)); err != nil {
+		return fmt.Errorf("resolve probe for %s: %w", name, err)
+	}
+	if err := matchFile(program, programPath); err != nil {
+		return fmt.Errorf("resolve probe for %s: %w", name, err)
+	}
+	if err := checkMachine(programPath, probe.Machine); err != nil {
+		return fmt.Errorf("probe machine for %s: %w", name, err)
+	}
+	cmd := exec.CommandContext(ctx, programPath, probe.Args...)
+	cmd.Args[0] = probe.Path
+	cmd.Env = mergeEnv(os.Environ(), probe.Env)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("probe %s: %w: %s", name, err, strings.TrimSpace(string(output)))
+	}
+	for _, want := range probe.Want {
+		if !strings.Contains(string(output), want) {
+			return fmt.Errorf("probe %s output misses %q", name, want)
+		}
+	}
+	return nil
+}
+
+func matchFile(file *os.File, name string) error {
+	pathInfo, err := os.Stat(name)
+	if err != nil {
+		return err
+	}
+	openInfo, err := file.Stat()
+	if err != nil {
+		return err
+	}
+	if !pathInfo.Mode().IsRegular() || pathInfo.Mode().Perm() != 0o755 || !safeOwner(pathInfo) || !os.SameFile(pathInfo, openInfo) {
+		return errors.New("probe path changed while opening")
 	}
 	return nil
 }
@@ -240,6 +626,7 @@ func unpack(ctx context.Context, repo, root string, archive catalog.Archive) err
 	default:
 		return fmt.Errorf("unsupported archive format: %d", archive.Format)
 	}
+	reader = &ctxRead{ctx: ctx, reader: reader}
 	target := filepath.Join(root, archive.Dir)
 	if err := os.Mkdir(target, 0o755); err != nil {
 		return fmt.Errorf("create archive root: %w", err)
@@ -253,13 +640,13 @@ func unpack(ctx context.Context, repo, root string, archive catalog.Archive) err
 	if _, err := io.Copy(io.Discard, reader); err != nil {
 		return fmt.Errorf("finish archive stream: %w", err)
 	}
-	if err := fixModes(target); err != nil {
+	if err := fixModes(ctx, target); err != nil {
 		return err
 	}
 	if err := closeFn(); err != nil {
 		return fmt.Errorf("close archive stream: %w", err)
 	}
-	if err := stream.finish(archive.SHA256); err != nil {
+	if err := stream.finish(ctx, archive.SHA256); err != nil {
 		return err
 	}
 	return nil
@@ -331,7 +718,7 @@ func untar(ctx context.Context, reader io.Reader, root, prefix string) error {
 			if err != nil {
 				return fmt.Errorf("create archive file: %w", err)
 			}
-			written, copyErr := io.Copy(file, tarReader)
+			written, copyErr := io.Copy(file, &ctxRead{ctx: ctx, reader: tarReader})
 			closeErr := file.Close()
 			if copyErr != nil {
 				return fmt.Errorf("write archive file: %w", copyErr)
@@ -443,23 +830,101 @@ func safeJoin(root, rel string) (string, error) {
 	return filepath.Join(root, clean), nil
 }
 
-func safeExec(root, rel string) (string, string, error) {
-	program, err := safeJoin(root, rel)
+func openRel(root *os.File, rel string, follow bool) (*os.File, error) {
+	clean := path.Clean(filepath.ToSlash(rel))
+	if path.IsAbs(clean) || clean == "." || clean == ".." || strings.HasPrefix(clean, "../") {
+		return nil, fmt.Errorf("invalid relative path: %s", rel)
+	}
+	pending := strings.Split(clean, "/")
+	links := 0
+	for {
+		dir, err := dupRoot(root)
+		if err != nil {
+			return nil, err
+		}
+		logical := make([]string, 0, len(pending))
+		restart := false
+		for index, name := range pending {
+			final := index == len(pending)-1
+			flags := unix.O_RDONLY | unix.O_CLOEXEC | unix.O_NOFOLLOW
+			if !final {
+				flags |= unix.O_DIRECTORY
+			}
+			fd, openErr := unix.Openat(int(dir.Fd()), name, flags, 0)
+			if openErr == nil {
+				next := os.NewFile(uintptr(fd), name)
+				if final {
+					dir.Close()
+					return next, nil
+				}
+				info, statErr := next.Stat()
+				if statErr != nil || !info.IsDir() || info.Mode().Perm() != 0o755 || !safeOwner(info) {
+					next.Close()
+					dir.Close()
+					return nil, fmt.Errorf("relative directory is invalid: %s", rel)
+				}
+				dir.Close()
+				dir = next
+				logical = append(logical, name)
+				continue
+			}
+			target, linkErr := readLink(dir, name)
+			if linkErr != nil {
+				dir.Close()
+				return nil, fmt.Errorf("open relative path %s: %w", rel, openErr)
+			}
+			if final && !follow {
+				dir.Close()
+				return nil, fmt.Errorf("linked final path is not allowed: %s", rel)
+			}
+			if path.IsAbs(target) {
+				dir.Close()
+				return nil, fmt.Errorf("relative path escapes root: %s", rel)
+			}
+			links++
+			if links > 40 {
+				dir.Close()
+				return nil, fmt.Errorf("too many links in relative path: %s", rel)
+			}
+			parts := append([]string{}, logical...)
+			parts = append(parts, target)
+			parts = append(parts, pending[index+1:]...)
+			nextRel := path.Clean(path.Join(parts...))
+			if nextRel == "." || nextRel == ".." || strings.HasPrefix(nextRel, "../") {
+				dir.Close()
+				return nil, fmt.Errorf("relative path escapes root: %s", rel)
+			}
+			pending = strings.Split(nextRel, "/")
+			dir.Close()
+			restart = true
+			break
+		}
+		if !restart {
+			dir.Close()
+			return nil, fmt.Errorf("open relative path failed: %s", rel)
+		}
+	}
+}
+
+func dupRoot(root *os.File) (*os.File, error) {
+	fd, err := unix.Dup(int(root.Fd()))
 	if err != nil {
-		return "", "", err
+		return nil, fmt.Errorf("duplicate directory handle: %w", err)
 	}
-	real, err := filepath.EvalSymlinks(program)
+	unix.CloseOnExec(fd)
+	return os.NewFile(uintptr(fd), root.Name()), nil
+}
+
+func readLink(root *os.File, name string) (string, error) {
+	buffer := make([]byte, 4096)
+	count, err := unix.Readlinkat(int(root.Fd()), name, buffer)
 	if err != nil {
-		return "", "", fmt.Errorf("resolve probe program: %w", err)
+		return "", err
 	}
-	inside, err := inTreeReal(root, real)
-	if err != nil {
-		return "", "", err
+	if count == len(buffer) {
+		return "", errors.New("linked path is too long")
 	}
-	if !inside {
-		return "", "", fmt.Errorf("probe program escapes toolchain: %s", rel)
-	}
-	return real, program, nil
+	return string(buffer[:count]), nil
 }
 
 func makeParent(root, rel string) error {
@@ -483,11 +948,20 @@ func makeParent(root, rel string) error {
 		if err != nil {
 			return fmt.Errorf("inspect archive parent: %w", err)
 		}
-		if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+		if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 || !safeOwner(info) {
 			return fmt.Errorf("archive parent is not a regular directory: %s", current)
 		}
 	}
 	return nil
+}
+
+func safeOwner(info os.FileInfo) bool {
+	stat, ok := info.Sys().(*syscall.Stat_t)
+	if !ok {
+		return false
+	}
+	uid := uint32(os.Geteuid())
+	return stat.Uid == 0 || stat.Uid == uid
 }
 
 func cleanRoot(root string) (string, error) {
@@ -524,7 +998,30 @@ func cleanDest(dest string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("resolve destination parent: %w", err)
 	}
+	if err := safeParents(realParent); err != nil {
+		return "", err
+	}
 	return filepath.Join(realParent, filepath.Base(abs)), nil
+}
+
+func safeParents(name string) error {
+	for {
+		info, err := os.Lstat(name)
+		if err != nil {
+			return fmt.Errorf("inspect destination parent: %w", err)
+		}
+		if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 || !safeOwner(info) {
+			return fmt.Errorf("destination parent is not a regular directory: %s", name)
+		}
+		if info.Mode().Perm()&0o022 != 0 {
+			return fmt.Errorf("destination parent is writable by other users: %s", name)
+		}
+		parent := filepath.Dir(name)
+		if parent == name {
+			return nil
+		}
+		name = parent
+	}
 }
 
 func makeDirs(name string, mode os.FileMode) error {
@@ -593,8 +1090,11 @@ func holdsRepo(dest, repo string) (bool, error) {
 	return inTree(dest, repo), nil
 }
 
-func fixModes(root string) error {
+func fixModes(ctx context.Context, root string) error {
 	return filepath.WalkDir(root, func(pathName string, entry os.DirEntry, walkErr error) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if walkErr != nil {
 			return walkErr
 		}
@@ -614,6 +1114,18 @@ func fixModes(root string) error {
 		}
 		return nil
 	})
+}
+
+type ctxRead struct {
+	ctx    context.Context
+	reader io.Reader
+}
+
+func (reader *ctxRead) Read(buffer []byte) (int, error) {
+	if err := reader.ctx.Err(); err != nil {
+		return 0, err
+	}
+	return reader.reader.Read(buffer)
 }
 
 func openParts(repo string, parts []catalog.Part) (*partRead, error) {
@@ -775,8 +1287,8 @@ func (reader *partRead) Read(buffer []byte) (int, error) {
 	}
 }
 
-func (reader *partRead) finish(want string) error {
-	if _, err := io.Copy(io.Discard, reader); err != nil {
+func (reader *partRead) finish(ctx context.Context, want string) error {
+	if _, err := io.Copy(io.Discard, &ctxRead{ctx: ctx, reader: reader}); err != nil {
 		return err
 	}
 	got := hex.EncodeToString(reader.all.Sum(nil))
