@@ -38,3 +38,11 @@ toolchain_progress component="LLVM 22" index=4 total=7 remaining=3 elapsed_secon
 目标父目录链通常必须由当前用户或`root`拥有，且不可由组或其它用户写入。`install`使用的`Run`只对当前UID所有、与父目录跨设备、组可写但非`world`可写的挂载根通过已打开的目录FD追加`sticky`位，并保留原有`setuid`、`setgid`和权限位。`check`不修改权限，缺少`sticky`位时直接拒绝；非跨设备的普通`0775`目录和任何`0777`目录仍会被拒绝。目标目录链与组件路径使用`openat`和`O_NOFOLLOW`打开，权限调整、身份核对与发布均通过已打开的目录或文件FD完成。
 
 安装检查验证摘要、版本、文件模式和ELF x86-64架构。任何检查失败都会返回非零退出码，不会搜索或改用系统程序。Linux amd64只用于构建，不表示支持运行云机。
+
+## 脚本探针
+
+Linux脚本探针通过已打开的父目录定位脚本，使`ndk-build`能够按`$0`查找同目录的`build/ndk-build`。执行前核对脚本与目录中的文件身份，取消时终止子进程；二进制探针继续保留登记的调用名称。
+
+2026-09-16在Ubuntu24.04 amd64的NUC上，`TestScriptPeer`先因相邻资源路径错误退出1；修正后与`TestScriptSwap`、`TestProbeCancel`一同退出0。CLI、目录清单和工具选择包测试、`go vet ./...`退出0，使用登记Go1.26.8原生构建的候选程序完成安装及全部七个组件的`check`，退出0。证据保存在NUC主仓`build/ndk-probe-red-v2.log`、`build/ndk-probe-green-v4.log`、`build/ndk-probe-cli-test-v2.log`、`build/ndk-probe-vet.log`、`build/ndk-probe-candidate-install.log`和`build/ndk-probe-final-check.log`。
+
+测试目录链必须满足上述权限要求，本次测试进程使用`umask 022`和仓内独立临时目录。此前扩展回归因测试目录组可写而退出1，日志保留；完整安装测试中仍有会创建符号链接的历史用例，本次未执行。主仓正式入口的复验随组件引用同步继续进行，由[#6](https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/issues/6)跟踪。

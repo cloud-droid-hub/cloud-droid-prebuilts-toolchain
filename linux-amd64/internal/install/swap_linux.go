@@ -25,7 +25,7 @@ func fdAlias(file *os.File) string {
 	return "/proc/self/fd/" + strconv.FormatUint(uint64(file.Fd()), 10)
 }
 
-func runAt(ctx context.Context, root, program *os.File, rel string, _ bool, args, env []string) ([]byte, error) {
+func runAt(ctx context.Context, root, program *os.File, rel string, script bool, args, env []string) ([]byte, error) {
 	done := ctx.Done()
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -47,10 +47,17 @@ func runAt(ctx context.Context, root, program *os.File, rel string, _ bool, args
 	}
 	defer parent.Close()
 
-	cmd := exec.CommandContext(runCtx, "/proc/self/fd/3", args...)
+	path := "/proc/self/fd/3"
+	files := []*os.File{program}
+	if script {
+		// 脚本通过自身目录查找相邻文件，解释器必须取得该目录路径。
+		path = "/proc/self/fd/4/" + leaf
+		files = append(files, parent)
+	}
+	cmd := exec.CommandContext(runCtx, path, args...)
 	cmd.Args[0] = rel
 	cmd.Env = env
-	cmd.ExtraFiles = []*os.File{program}
+	cmd.ExtraFiles = files
 	if !sameChild(parent, program, leaf) {
 		return nil, fmt.Errorf("probe path changed before execution: %q", rel)
 	}
