@@ -38,6 +38,20 @@ Pixel6的正式`just build-secure-env`与`just test-secure-env`已在完整本�
 
 对应日志保存在主仓`output/llvm22-trim/logs/`下的`darwin-size-red.log`、`darwin-formal-test.log`、`darwin-formal-copy.log`、`darwin-formal-compare.log`及各平台`*-formal-unit.log`、`*-formal-vet.log`。主代理负责版本、逐项提交、同步主仓引用，以及从新正式包重装后执行`toolchain-init`、`toolchain-check`和`build-qemu-cdh`。
 
+## macOS LLVM22普通文件归档记录
+
+按最新链接规则，保留`bin/clang -> clang-22`和`bin/ld.lld -> lld`，其余18个工具与动态库别名均保存为最终目标的独立普通文件。普通文件增加900946544字节，合计2211261752字节、8569个文件；归档仍含9281个条目，工具入口、头文件、Clang resource、库与许可证清单不变。新压缩包为351706968字节、4卷，比此前三卷包增加156547120字节，仍比原始16卷包减少76.2%；完整SHA-256为`76c2be3c57ca741a095a70ccb739148ea57e13033f6c1d39e9b342aac64c2db2`。
+
+替换前，`go test ./tests -run '^TestLLVM22Links$' -count=1 -v`实际退出1，旧正式归档的`bin/clang++ -> clang`被拒绝。使用现有完整安装运行`TestLLVM22Copy`也退出1，仅通过`Lstat`观察到`bin/clang++`不是普通文件，未执行该旧别名。两项红灯未创建链接。
+
+本次重新计算旧包、新候选和四个分卷的SHA-256，与此前完整归档验证的输入一致，因此复用`output/llvm22-trim/regular-v2/logs/darwin-arm64-verify.log`中路径、权限、最终目标字节与许可证保持一致的结果，没有再次运行该完整归档验证。使用已提交的`tools/llvm22-check`从候选四卷全新安装，实际退出0、耗时472.086秒：正式安装器`RunTo`与`Check`、Clang/LLD22.1.8、C/C++字符串与异常运行、静态库链接、LLVM工具、剥离后运行及`libclang.dylib`实际加载均通过。安装和探测目录位于组件`build/llvm22-trim/darwin-regular-v2/`，现有主仓完整LLVM22安装保留。
+
+四卷经普通复制、同步、SHA-256及独立文件身份核对后，以macOS原子交换进入`darwin-arm64/payload/llvm22/`，旧三卷保存在组件`build/llvm22-trim/darwin-regular-v2/payload-swap/`。相应类型化catalog和原生安装程序已重建，旧安装程序保留在同一构建目录。源与目标inode不同、普通文件`st_nlink == 1`，未创建额外链接。新安装中的完整LLVM许可证和`include/llvm/Support/LICENSE.TXT`与既有许可证逐项摘要一致。
+
+在登记Go1.26.8、组件`build/test-tmp/`和仓内缓存下，`go test ./tests -run '^TestLLVM22(Size|Links|Build)$' -count=1 -v`使用候选安装根运行，三项测试退出0、全程222.053秒，确认正式四卷摘要、8569个普通文件、两项登记链接以及18组别名与目标的权限、字节和独立身份。随后清空`CDH_LLVM22_TEST_ROOT`，单独运行`go test ./tests -run '^TestLLVM22Build$' -count=1 -v`，由正式catalog从新分卷全新安装单项LLVM22，安装检查及原生探测退出0、全程249.928秒。三个宿主模块的`go test ./internal/catalog -count=1 -v`与`go vet ./...`在macOS上退出0；这些Go检查不代表运行了Linux程序。
+
+本次原始日志保存在主仓`output/llvm22-trim/darwin-regular-formal/`：`links-red.log`、`copy-red.log`记录替换前行为，`native.log`记录候选全新安装及原生探测，`focused.log`与`formal-install.log`分别记录聚焦检查和正式分卷的全新安装，`input-sha256.log`、`licenses.log`、`formal-ids.log`、`formal-sha256.log`及`previous-ids.log`、`previous-sha256.log`记录输入、正式文件和保留旧文件。该项不修改LLVM19、两份Linux归档或版本；主仓正式消费者验证、版本与发布仍由主代理继续执行。
+
 ## 候选安装检查工具
 
 2026-09-16把候选安装与消费者检查维护在[工具源码](../../tools/llvm22-check/README.md)。它复用正式安装器，安装前核对连续分卷、真实摘要、TAR条目、独立文件身份和空间，拒绝未登记链接及错误架构。安装后检查成对编译器、C/C++异常运行、静态归档、二进制工具和libclang真实加载；失败保留候选与日志。该工具不修改正式catalog，不下载依赖，也不替代安全组件正式构建。

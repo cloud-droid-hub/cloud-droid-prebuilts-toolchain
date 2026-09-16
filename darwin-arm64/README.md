@@ -2,9 +2,9 @@
 
 本目录由仓库唯一`main`分支维护，发布macOS arm64使用的Go 1.26.8、Temurin JDK 21.0.12.1+1、LLVM 19.1.7、LLVM 22.1.8、裁剪后的Android NDK r29 revision 29.0.14206865、Bazel 8.5.1和Rust/Cargo 1.97.1。Rust内部LLVM为22.1.6，并包含`aarch64-linux-android`标准库。
 
-LLVM 22.1.8按本仓消费者裁剪为195159848字节、3卷；原归档为1479903744字节、16卷，压缩量减少86.8%。版本、宿主架构和保留文件的原始字节不变，LLVM 19保持原样。新归档名为`LLVM-22.1.8-macOS-ARM64-cdh.tar.xz`，包内根目录仍为`LLVM-22.1.8-macOS-ARM64`；完整SHA-256与每卷大小、摘要由`internal/catalog/catalog.go`登记。
+LLVM 22.1.8按本仓消费者裁剪并把非登记别名转换为普通文件后，为351706968字节、4卷；原归档为1479903744字节、16卷，压缩量减少76.2%。此前保留20个符号链接的裁剪包为195159848字节、3卷；本次把其中18个别名改为独立普通文件，压缩量增加156547120字节。版本、宿主架构和保留文件的原始字节不变，LLVM 19保持原样。新归档名为`LLVM-22.1.8-macOS-ARM64-cdh.tar.xz`，包内根目录仍为`LLVM-22.1.8-macOS-ARM64`；完整SHA-256与每卷大小、摘要由`internal/catalog/catalog.go`登记。
 
-归档保留完整`include/`、`share/`和`lib/clang/`，以及`libc++`、`libc++abi`、`libunwind`的静态库、动态库和包内符号链接、`libclang.dylib`与`libclang-cpp.dylib`。上游许可证与通知均保留，完整LLVM许可证同时放在`share/licenses/LLVM-LICENSE.TXT`。保留的`bin/`程序和别名如下：
+归档保留完整`include/`、`share/`和`lib/clang/`，以及`libc++`、`libc++abi`、`libunwind`的静态库、动态库与普通文件别名、`libclang.dylib`与`libclang-cpp.dylib`。仅保留登记的`bin/clang -> clang-22`和`bin/ld.lld -> lld`两项符号链接，其余8569个文件都是普通文件，普通文件总量为2211261752字节。上游许可证与通知均保留，完整LLVM许可证同时放在`share/licenses/LLVM-LICENSE.TXT`。保留的`bin/`程序和别名如下：
 
 ```text
 clang clang++ clang-22 clang-cpp clang-scan-deps dsymutil
@@ -16,7 +16,7 @@ llvm-ranlib llvm-readelf llvm-readobj llvm-size llvm-strings llvm-strip
 llvm-symbolizer
 ```
 
-`TestLLVM22Size`核对实际分卷的字节数、完整摘要、权限和独立文件身份，并限制归档不超过4卷。`TestLLVM22Build`经正式安装后运行C/C++编译链接、字符串与异常、目标文件和归档工具、剥离后执行以及`libclang`实际动态加载；Clang与LLD必须来自同一安装目录。
+`TestLLVM22Size`核对实际分卷的字节数、完整摘要、权限和独立文件身份，并限制归档不超过4卷。`TestLLVM22Links`只读TAR条目并拒绝非登记链接；`TestLLVM22Copy`可通过`CDH_LLVM22_TEST_ROOT`检查现有安装的18组普通文件别名。`TestLLVM22Build`经正式安装后先核对这18组文件的独立身份、权限与内容，再运行C/C++编译链接、字符串与异常、目标文件和归档工具、剥离后执行以及`libclang`实际动态加载；Clang与LLD必须来自同一安装目录。
 
 在仓库根执行：
 

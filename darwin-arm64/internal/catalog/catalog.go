@@ -214,20 +214,24 @@ func Current() Spec {
 			Version: "22.1.8",
 			Dir:     "llvm22",
 			Format:  TarXZ,
-			SHA256:  "71aadf690e9878fa5f6dfcc87b16cdb7d904e8c12fa26c093e2149ee9d96768c",
+			SHA256:  "76c2be3c57ca741a095a70ccb739148ea57e13033f6c1d39e9b342aac64c2db2",
 			Prefix:  "LLVM-22.1.8-macOS-ARM64",
 			Parts: []Part{{
 				Path:   "payload/llvm22/LLVM-22.1.8-macOS-ARM64-cdh.tar.xz.part-000",
 				Size:   94371840,
-				SHA256: "dfe5d52ea2ef78ccfeba601216fdf11dc996295d841dbaedd6e2d71dda7a00c7",
+				SHA256: "06237a8525b95ee82661ff565c6cb0489d3e9c9c6681c3439aa9aa0a62938e01",
 			}, {
 				Path:   "payload/llvm22/LLVM-22.1.8-macOS-ARM64-cdh.tar.xz.part-001",
 				Size:   94371840,
-				SHA256: "2ced8fbf0c9c461a61fded2998e517275cd3bc0caa7da2ab3773042dbd64b54d",
+				SHA256: "e4987320de882dbd1209f3aa10ec597008db3785609ff30f8989643cbe9cdafe",
 			}, {
 				Path:   "payload/llvm22/LLVM-22.1.8-macOS-ARM64-cdh.tar.xz.part-002",
-				Size:   6416168,
-				SHA256: "ba29dcbba3344f2130356462bed93ce17101b3de10809ce07abd7bead2c31c2c",
+				Size:   94371840,
+				SHA256: "bb8f3ad02ef648cc7a4eb70966d4ef2667c7b19e6f81be789c4abc9a972bfcba",
+			}, {
+				Path:   "payload/llvm22/LLVM-22.1.8-macOS-ARM64-cdh.tar.xz.part-003",
+				Size:   68591448,
+				SHA256: "7cbf6938bb7a7df2227eea074690becb41535f128344cf1bb7776aa3496a87bc",
 			}},
 			Probes: []Probe{{
 				Path:    "bin/clang",

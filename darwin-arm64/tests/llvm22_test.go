@@ -3,6 +3,7 @@
 package tests
 
 import (
+	"archive/tar"
 	"context"
 	"crypto/sha256"
 	"debug/macho"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/catalog"
 	"github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/install"
+	"github.com/ulikunitz/xz"
 )
 
 func TestLLVM22Size(t *testing.T) {
@@ -72,6 +74,84 @@ func TestLLVM22Size(t *testing.T) {
 	t.Logf("LLVM 22: %d parts, %d bytes", len(archive.Parts), size)
 }
 
+func TestLLVM22Links(t *testing.T) {
+	work, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var archive catalog.Archive
+	for _, item := range catalog.Current().Archives {
+		if item.Dir == "llvm22" {
+			archive = item
+			break
+		}
+	}
+	if len(archive.Parts) == 0 {
+		t.Fatal("LLVM 22 archive is not registered")
+	}
+	var readers []io.Reader
+	for _, part := range archive.Parts {
+		name := filepath.Join(filepath.Dir(work), filepath.FromSlash(part.Path))
+		info, err := os.Lstat(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !info.Mode().IsRegular() || info.Sys().(*syscall.Stat_t).Nlink != 1 {
+			t.Fatalf("archive part is not an independent regular file: %s", name)
+		}
+		f, err := os.Open(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			if err := f.Close(); err != nil {
+				t.Error(err)
+			}
+		})
+		now, err := f.Stat()
+		if err != nil || !os.SameFile(info, now) {
+			t.Fatalf("archive part identity changed: %s", name)
+		}
+		readers = append(readers, f)
+	}
+	xr, err := xz.NewReader(io.MultiReader(readers...))
+	if err != nil {
+		t.Fatal(err)
+	}
+	tr := tar.NewReader(xr)
+	files, links := 0, 0
+	for {
+		h, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		switch h.Typeflag {
+		case tar.TypeDir:
+		case tar.TypeReg, tar.TypeRegA:
+			files++
+		case tar.TypeSymlink:
+			allowed := h.Name == archive.Prefix+"/bin/clang" && h.Linkname == "clang-22" ||
+				h.Name == archive.Prefix+"/bin/ld.lld" && h.Linkname == "lld"
+			if !allowed {
+				t.Fatalf("unregistered archive link: %s -> %s", h.Name, h.Linkname)
+			}
+			links++
+		default:
+			t.Fatalf("unsupported archive type %d: %s", h.Typeflag, h.Name)
+		}
+	}
+	if _, err := io.Copy(io.Discard, xr); err != nil {
+		t.Fatal(err)
+	}
+	if files == 0 {
+		t.Fatal("LLVM 22 archive has no regular files")
+	}
+	t.Logf("LLVM 22: regular=%d kept_links=%d", files, links)
+}
+
 func TestLLVM22Build(t *testing.T) {
 	spec := catalog.Current()
 	for _, archive := range spec.Archives {
@@ -101,6 +181,7 @@ func TestLLVM22Build(t *testing.T) {
 	if err := install.Check(context.Background(), filepath.Dir(root), spec); err != nil {
 		t.Fatal(err)
 	}
+	llvm22Copies(t, root)
 	sdk := strings.TrimSpace(llvm22Run(t, "xcrun", "--sdk", "macosx", "--show-sdk-path"))
 	if !filepath.IsAbs(sdk) {
 		t.Fatalf("macOS SDK path=%q", sdk)
@@ -177,6 +258,65 @@ int main(int argc, char **argv) {
 	llvm22File(t, root, libclang)
 	llvm22Run(t, filepath.Join(bin, "clang"), "-isysroot", sdk, "-I"+filepath.Join(root, "include"), "--ld-path="+filepath.Join(bin, "ld64.lld"), source, "-o", program)
 	t.Log(strings.TrimSpace(llvm22Run(t, program, libclang)))
+}
+
+func TestLLVM22Copy(t *testing.T) {
+	root := os.Getenv("CDH_LLVM22_TEST_ROOT")
+	if root == "" {
+		t.Skip("set CDH_LLVM22_TEST_ROOT to check installed ordinary aliases")
+	}
+	llvm22Copies(t, root)
+}
+
+func llvm22Copies(t *testing.T, root string) {
+	t.Helper()
+	if !filepath.IsAbs(root) || filepath.Base(root) != "llvm22" {
+		t.Fatalf("LLVM 22 root is not an absolute installation path: %q", root)
+	}
+	for _, pair := range [][2]string{
+		{"bin/clang++", "bin/clang-22"}, {"bin/clang-cpp", "bin/clang-22"},
+		{"bin/ld64.lld", "bin/lld"}, {"bin/lld-link", "bin/lld"}, {"bin/wasm-ld", "bin/lld"},
+		{"bin/llvm-addr2line", "bin/llvm-symbolizer"}, {"bin/llvm-bitcode-strip", "bin/llvm-objcopy"},
+		{"bin/llvm-install-name-tool", "bin/llvm-objcopy"}, {"bin/llvm-otool", "bin/llvm-objdump"},
+		{"bin/llvm-ranlib", "bin/llvm-ar"}, {"bin/llvm-readelf", "bin/llvm-readobj"}, {"bin/llvm-strip", "bin/llvm-objcopy"},
+		{"lib/libc++.1.dylib", "lib/libc++.1.0.dylib"}, {"lib/libc++.dylib", "lib/libc++.1.0.dylib"},
+		{"lib/libc++abi.1.dylib", "lib/libc++abi.1.0.dylib"}, {"lib/libc++abi.dylib", "lib/libc++abi.1.0.dylib"},
+		{"lib/libunwind.1.dylib", "lib/libunwind.1.0.dylib"}, {"lib/libunwind.dylib", "lib/libunwind.1.0.dylib"},
+	} {
+		var infos [2]os.FileInfo
+		var sums [2][32]byte
+		for i, rel := range pair {
+			name := filepath.Join(root, filepath.FromSlash(rel))
+			info, err := os.Lstat(name)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !info.Mode().IsRegular() || info.Sys().(*syscall.Stat_t).Nlink != 1 {
+				t.Fatalf("alias or target is not an independent ordinary file: %s", rel)
+			}
+			f, err := os.Open(name)
+			if err != nil {
+				t.Fatal(err)
+			}
+			now, err := f.Stat()
+			if err != nil || !os.SameFile(info, now) {
+				f.Close()
+				t.Fatalf("alias or target identity changed: %s", rel)
+			}
+			hash := sha256.New()
+			n, err := io.Copy(hash, f)
+			closeErr := f.Close()
+			if err != nil || closeErr != nil || n != info.Size() {
+				t.Fatalf("read alias or target %s: bytes=%d error=%v close=%v", rel, n, err, closeErr)
+			}
+			infos[i] = info
+			copy(sums[i][:], hash.Sum(nil))
+		}
+		if os.SameFile(infos[0], infos[1]) || infos[0].Mode() != infos[1].Mode() || infos[0].Size() != infos[1].Size() || sums[0] != sums[1] {
+			t.Fatalf("alias and target do not have independent identical contents and modes: %v", pair)
+		}
+		t.Logf("alias=%s target=%s bytes=%d sha256=%x independent=true", pair[0], pair[1], infos[0].Size(), sums[0])
+	}
 }
 
 func llvm22Run(t *testing.T, program string, args ...string) string {
