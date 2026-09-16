@@ -4,7 +4,10 @@ package tests
 
 import (
 	"context"
+	"crypto/sha256"
 	"debug/macho"
+	"encoding/hex"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,6 +18,59 @@ import (
 	"github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/catalog"
 	"github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/install"
 )
+
+func TestLLVM22Size(t *testing.T) {
+	work, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var archive catalog.Archive
+	for _, item := range catalog.Current().Archives {
+		if item.Dir == "llvm22" {
+			archive = item
+			break
+		}
+	}
+	if len(archive.Parts) == 0 {
+		t.Fatal("LLVM 22 archive is not registered")
+	}
+	total := sha256.New()
+	var size int64
+	for _, part := range archive.Parts {
+		path := filepath.Join(filepath.Dir(work), filepath.FromSlash(part.Path))
+		info, err := os.Lstat(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !info.Mode().IsRegular() || info.Mode().Perm() != 0o644 || info.Sys().(*syscall.Stat_t).Nlink != 1 {
+			t.Fatalf("archive part is not an independent regular file with mode 0644: %s", part.Path)
+		}
+		if info.Size() != part.Size || info.Size() > catalog.MaxPart {
+			t.Fatalf("part %s size=%d registered=%d", part.Path, info.Size(), part.Size)
+		}
+		file, err := os.Open(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		digest := sha256.New()
+		n, readErr := io.Copy(io.MultiWriter(total, digest), file)
+		closeErr := file.Close()
+		if readErr != nil || closeErr != nil {
+			t.Fatalf("read part %s: %v; close: %v", part.Path, readErr, closeErr)
+		}
+		if got := hex.EncodeToString(digest.Sum(nil)); got != part.SHA256 {
+			t.Fatalf("part %s SHA-256=%s", part.Path, got)
+		}
+		size += n
+	}
+	if got := hex.EncodeToString(total.Sum(nil)); got != archive.SHA256 {
+		t.Fatalf("LLVM 22 archive SHA-256=%s", got)
+	}
+	if len(archive.Parts) > 4 || size > 4*catalog.MaxPart {
+		t.Fatalf("LLVM 22 archive too large: %d parts, %d bytes", len(archive.Parts), size)
+	}
+	t.Logf("LLVM 22: %d parts, %d bytes", len(archive.Parts), size)
+}
 
 func TestLLVM22Build(t *testing.T) {
 	spec := catalog.Current()

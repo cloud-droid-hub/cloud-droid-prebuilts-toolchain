@@ -1,12 +1,12 @@
 # LLVM 19 与 macOS LLVM 22 归档裁剪设计及实施计划
 
-> 2026-09-16 执行范围：先在本地验证 `just build-secure-env` 使用 LLVM 22，成功后再决定取消 macOS LLVM 19。用户随后授权一个子代理并行准备三个平台的 LLVM 22 裁剪候选；LLVM 19 的裁剪与取消均等待 macOS 移植结论。当前正式归档尚未更改。
+> 2026-09-16 执行范围：用户授权一个子代理准备三个平台的 LLVM 22 裁剪候选，按 macOS arm64、Linux arm64、Linux amd64 顺序逐项替换、验证和提交。Pixel6 的 macOS LLVM 22 正式构建与测试已通过；其它登记设备的安全分支尚未完成同项验证，因此 LLVM 19 保持原样。
 
 ## 目标与边界
 
 减少工具链首次同步和安装量。本计划对应工具链仓 issue #4，不改变工具链版本、宿主架构或项目编译目标。当前先准备 `darwin-arm64` 的 LLVM 22.1.8，以及 `linux-arm64`、`linux-amd64` 的 LLVM 22.1.2 候选；每个平台独立验证、提交并推送 `main`，随后立即同步主仓 gitlink。Linux LLVM 22 已裁过一次，只有明确未使用的内容才继续删减，不以固定缩减比例牺牲能力。
 
-当前归档基线：LLVM 19 的 macOS arm64 与 Linux arm64 各约 1.3 GiB、15 卷，Linux amd64 约 1.5 GiB、18 卷；macOS LLVM 22 约 1.4 GiB、16 卷。Linux LLVM 22 已是单卷，不能把它的目录清单直接用于 macOS。macOS `secure_env` 固定 LLVM 19.1.7，但现有 Bazel 规则仍下载官方包；Linux `secure_env` 实际选择 LLVM 22.1.2。缩减预编包本身不能冒称已消除 Bazel 下载。
+原归档基线：LLVM 19 的 macOS arm64 与 Linux arm64 各约 1.3 GiB、15 卷，Linux amd64 约 1.5 GiB、18 卷；macOS LLVM 22 为1479903744字节、16卷。Linux LLVM 22 已是单卷，不能把它的目录清单直接用于 macOS。最初 macOS `secure_env` 固定 LLVM 19.1.7 并由 Bazel 下载官方包；Pixel6 安全组件本轮已改为显式选择本地 LLVM 22，Linux仍使用22.1.2。归档裁剪与消费者工具链选择分别验收。
 
 ## 保留原则
 
@@ -26,7 +26,17 @@
 
 新增 `TestLLVM22Build`，可通过 `CDH_LLVM22_TEST_ROOT` 指定正式安装根；未指定时由安装器展开已登记归档。M1 Max 上使用现有 LLVM 22.1.8 安装运行通过：C/C++ 编译、同目录 LLD 链接、字符串与异常运行、Mach-O arm64 检查、归档与符号读取、剥离后运行、`libclang` 实际动态加载均退出 0。三个宿主 Go 模块的 `./cmd/... ./internal/...` 测试与 `go vet ./...` 在当前 macOS 上通过；这不表示 Linux ELF 已经原生运行。
 
-macOS `secure_env` 本地候选已使用 LLVM 22 编译完成，但六项原生测试因 `@rpath/libunwind.1.dylib` 无可用加载路径而失败；正式 `just build-secure-env` 尚未通过，不据此取消 LLVM 19。体积测试 `CDH_LLVM19_ENFORCE_SIZE=1` 对原 macOS LLVM 19 归档报红，实际为 15 卷、1413914424 字节；它只记录既有基线，不触发本轮 LLVM 19 替换。
+Pixel6 的正式 `just build-secure-env` 与 `just test-secure-env` 已在完整本地 LLVM 22 安装上退出0，六项原生测试全部通过，产物仅使用系统动态依赖；这一结果由安全组件的本地工具链适配取得，不代表裁剪包已经跑过上述正式入口。体积测试 `CDH_LLVM19_ENFORCE_SIZE=1` 对原 macOS LLVM 19 归档报红，实际为15卷、1413914424字节；它只记录既有基线，不触发本轮 LLVM 19 替换。
+
+## macOS LLVM 22 归档裁剪记录
+
+新增 `TestLLVM22Size` 后，原归档在 `go test ./tests -run '^TestLLVM22Size$' -count=1 -v` 中按预期退出1，报告16卷、1479903744字节。测试读取实际分卷，核对普通文件权限、`st_nlink == 1`、各卷和整包SHA-256，再检查总量与卷数上限。
+
+候选保留完整头文件、Clang resource、上游许可证、`libclang`与`libclang-cpp`、`libc++`、`libc++abi`、`libunwind`以及[平台说明](../../darwin-arm64/README.md)列出的35个工具和别名。裁剪后普通文件总量为1310315208字节，8551个普通文件、20个包内符号链接；保留的原始文件逐字节一致，另加入完整LLVM许可证的独立副本。新压缩包为195159848字节、3卷，较原包减少86.8%。完整SHA-256为`71aadf690e9878fa5f6dfcc87b16cdb7d904e8c12fa26c093e2149ee9d96768c`。
+
+三卷通过普通独立复制进入正式目录，源与目标的inode不同、普通文件链接数均为1，各卷大小和SHA-256与候选一致。原16卷仅从当前工作树替换，其Git历史和已有完整安装保留。使用 `TMPDIR=build/test-tmp`、登记Go 1.26.8和仓内缓存，在macOS模块运行 `go test ./tests -run '^TestLLVM22(Size|Build)$' -count=1 -v` 退出0：体积测试报告3卷、195159848字节，原生构建测试从新正式登记归档全新安装并通过 `check`、C/C++运行和实际动态加载，全程155.235秒。三个模块的 `go test ./cmd/... ./internal/...` 与 `go vet ./...`、组件仓 `git diff --check` 均退出0。
+
+对应日志保存在主仓 `output/llvm22-trim/logs/` 下的 `darwin-size-red.log`、`darwin-formal-test.log`、`darwin-formal-copy.log`、`darwin-formal-compare.log`及各平台 `*-formal-unit.log`、`*-formal-vet.log`。主代理负责版本、逐项提交、同步主仓引用，以及从新正式包重装后执行 `toolchain-init`、`toolchain-check`和 `build-qemu-cdh`。
 
 ## 回退
 
