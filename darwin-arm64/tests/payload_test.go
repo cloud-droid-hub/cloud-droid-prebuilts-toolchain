@@ -97,6 +97,94 @@ func TestPayloads(t *testing.T) {
 	}
 }
 
+func TestLLVM19Size(t *testing.T) {
+	if os.Getenv("CDH_LLVM19_ENFORCE_SIZE") != "1" {
+		t.Skip("LLVM 19 archive slimming is not published yet; set CDH_LLVM19_ENFORCE_SIZE=1 to run the red baseline")
+	}
+	work, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo := filepath.Dir(work)
+	archive := catalog.Current().Archives[2]
+	var size int64
+	for _, part := range archive.Parts {
+		info, err := os.Stat(filepath.Join(repo, filepath.FromSlash(part.Path)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !info.Mode().IsRegular() {
+			t.Fatalf("non-regular part: %s", part.Path)
+		}
+		size += info.Size()
+	}
+	if len(archive.Parts) > 4 || size > 4*catalog.MaxPart {
+		t.Fatalf("LLVM 19 archive too large: %d parts, %d bytes", len(archive.Parts), size)
+	}
+}
+
+func TestLLVM19Build(t *testing.T) {
+	root := os.Getenv("CDH_LLVM19_TEST_ROOT")
+	if root == "" {
+		work, err := os.Getwd()
+		if err != nil {
+			t.Fatal(err)
+		}
+		repo := filepath.Dir(work)
+		dest := filepath.Join(t.TempDir(), "tools")
+		spec := catalog.Current()
+		spec.Archives = []catalog.Archive{spec.Archives[2]}
+		if err := install.Run(context.Background(), repo, dest, spec); err != nil {
+			t.Fatal(err)
+		}
+		root = filepath.Join(dest, "llvm19")
+	}
+	if !filepath.IsAbs(root) {
+		t.Fatalf("LLVM 19 root is not absolute: %q", root)
+	}
+	sdkOut, err := exec.Command("xcrun", "--sdk", "macosx", "--show-sdk-path").CombinedOutput()
+	if err != nil {
+		t.Fatalf("macOS SDK: %v: %s", err, sdkOut)
+	}
+	sdk := strings.TrimSpace(string(sdkOut))
+	probeDir := t.TempDir()
+	for _, probe := range []struct {
+		name string
+		ext  string
+		tool string
+		body string
+	}{
+		{name: "c", ext: ".c", tool: "clang", body: "#include <stddef.h>\nint main(void) { return sizeof(size_t) ? 0 : 1; }\n"},
+		{name: "cc", ext: ".cc", tool: "clang++", body: "#include <vector>\nint main() { std::vector<int> x{1}; return x[0] - 1; }\n"},
+	} {
+		source := filepath.Join(probeDir, probe.name+probe.ext)
+		program := filepath.Join(probeDir, probe.name)
+		if err := os.WriteFile(source, []byte(probe.body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		output, err := exec.Command(filepath.Join(root, "bin", probe.tool),
+			"-isysroot", sdk, "-fuse-ld=lld", source, "-o", program).CombinedOutput()
+		if err != nil {
+			t.Fatalf("%s compile and link: %v: %s", probe.name, err, output)
+		}
+		output, err = exec.Command(program).CombinedOutput()
+		if err != nil {
+			t.Fatalf("%s run: %v: %s", probe.name, err, output)
+		}
+		binary, err := macho.Open(program)
+		if err != nil {
+			t.Fatalf("%s Mach-O: %v", probe.name, err)
+		}
+		cpu := binary.Cpu
+		if err := binary.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if cpu != macho.CpuArm64 {
+			t.Fatalf("%s cpu=%v", probe.name, cpu)
+		}
+	}
+}
+
 func TestLLVM22(t *testing.T) {
 	work, err := os.Getwd()
 	if err != nil {
