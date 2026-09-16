@@ -4,7 +4,6 @@ package tests
 
 import (
 	"archive/tar"
-	"bufio"
 	"context"
 	"crypto/sha256"
 	"debug/elf"
@@ -22,7 +21,6 @@ import (
 
 	"github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/catalog"
 	"github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/install"
-	"github.com/ulikunitz/xz"
 )
 
 func TestGo126(t *testing.T) {
@@ -423,24 +421,8 @@ func TestLLVM19(t *testing.T) {
 }
 
 func TestLLVM22GLIBC(t *testing.T) {
-	spec := catalog.Current()
-	archive := spec.Archives[3]
-	if len(archive.Parts) != 1 {
-		t.Fatalf("LLVM 22 parts=%d", len(archive.Parts))
-	}
-	work, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	part, err := os.Open(filepath.Join(filepath.Dir(work), filepath.FromSlash(archive.Parts[0].Path)))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer part.Close()
-	stream, err := xz.NewReader(bufio.NewReader(part))
-	if err != nil {
-		t.Fatal(err)
-	}
+	repo, archive := llvm22Archive(t)
+	stream := llvm22Input(t, repo, archive)
 	versions := regexp.MustCompile(`GLIBC_([0-9]+)\.([0-9]+)`).FindAllSubmatch
 	found := false
 	tars := tar.NewReader(stream)
@@ -476,6 +458,9 @@ func TestLLVM22GLIBC(t *testing.T) {
 	}
 	if !found {
 		t.Fatal("LLVM 22 GLIBC requirements not found")
+	}
+	if _, err := io.Copy(io.Discard, stream); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -547,11 +532,21 @@ func TestLLVM22(t *testing.T) {
 		return
 	}
 	spec.Archives = []catalog.Archive{archive}
-	dest := filepath.Join(t.TempDir(), "tools")
-	if err := install.Run(context.Background(), repo, dest, spec); err != nil {
+	root := os.Getenv("CDH_LLVM22_TEST_ROOT")
+	if root == "" {
+		dest := filepath.Join(t.TempDir(), "tools")
+		if err := install.Run(context.Background(), repo, dest, spec); err != nil {
+			t.Fatal(err)
+		}
+		root = filepath.Join(dest, "llvm22")
+	}
+	if filepath.Base(root) != "llvm22" {
+		t.Fatalf("invalid LLVM 22 root: %q", root)
+	}
+	llvm22Dir(t, root)
+	if err := install.Check(context.Background(), filepath.Dir(root), spec); err != nil {
 		t.Fatal(err)
 	}
-	root := filepath.Join(dest, "llvm22")
 	hostLibs := map[string]bool{
 		"ld-linux-x86-64.so.2": true,
 		"libbsd.so.0":          true,

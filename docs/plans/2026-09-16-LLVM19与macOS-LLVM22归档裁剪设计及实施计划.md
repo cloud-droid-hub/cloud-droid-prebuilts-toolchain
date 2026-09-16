@@ -70,6 +70,34 @@ Linux arm64保留LLVM22.1.2、35个工具入口、已有Clang resource、库与C
 
 原始日志位于主仓`output/llvm22-trim/linux-arm64-formal-v1/`。`outer-old.log`、`outer-red.log`、`deps-red-v2.log`保留既有依赖故障；`layout-red.log`同时记录首次挂载未包含父目录`go.mod`的检查失败，修正挂载后才取得真实依赖红灯。`layout-green.log`虽使用该文件名，实际仍退出1，原因是上述Polly额外加载失败；`polly-old-red.log`还记录原包中的旧链接被普通文件检查拒绝。`polly-old-host.log`与`polly-copy-host.log`保留原包`opt`对照失败。最终依据为`copy-pack.log`、`copy-verify.log`、`copy-parts.log`、`archive-green.log`、`formal-native.log`、`formal-tests.log`、`load-final.log`、`path-red.log`、`path-green.log`、`parts-before-ids.log`及`parts-final-ids.log`，未覆盖早期失败。
 
+## Linux amd64 LLVM22普通文件归档记录
+
+2026-09-16在Linux arm64归档发布后继续准备及验证amd64归档。旧正式归档为77077396字节、1卷，完整SHA-256为`3f1304acb447b9b6ba061e911a988b9915cae5398afe55cc1b3530d3f02b0688`。本项更新类型化catalog、测试、说明、正式分片与静态安装程序，LLVM19、macOS和Linux arm64不在本项修改范围。
+
+保留35个工具入口、Clang resource、已有库与CMake元数据，以及28份许可证和来源说明。42个原始别名转为独立普通文件，只有登记的`bin/ld.lld -> lld`仍为符号链接。静态核对发现外层LLVM与libclang使用`DT_RPATH=$ORIGIN`，转换后的普通文件布局缺少libclang要求的外层`libLLVM.so.22.1`，LLVM另需外层`libffi.so.8`、`libedit.so.2`、`libz3.so.4`与`libxml2.so.16`。按[平台映射](../../linux-amd64/README.md#llvm22普通文件归档)从原包`lib/cdh`复制最终文件字节，增加170469316展开字节；不修改动态库、Ubuntu24.04兼容库或许可证内容。
+
+主仓维护的`llvm22-pack pack`与`verify`使用同一组五项映射，均退出0。候选为419个普通文件、1个登记链接、442个条目，普通文件合计815168159字节。压缩后141057060字节，完整SHA-256为`55f4bf7ce313c0f4af2ad36152086686ad3e076b7bbfbc27bb0381118b031517`，两卷分别为94371840与46685220字节。第一卷SHA-256为`effab4b4666e595bc07531a8ae7a831497fa39f3ddadc2bf88f8fa81e7eea667`，第二卷为`5a3f31c8c8fda3c09c2d809a4054f5efdeda8626e94fe784e0eafcf056307945`。与旧正式包相比增加63979664字节，与此前未补五份依赖的普通文件候选相比增加31650520字节，不记为体积缩减。
+
+多分片读取测试先用真实两段XZ数据取得退出1，再修正旧单卷假设；旧正式归档的`bin/clang++ -> clang`也被新归档行为测试拒绝，退出1。使用登记Go1.26.8、组件`build/test-tmp/`与仓内缓存，令`CDH_LLVM22_PARTS`指向新候选分片，运行`go test ./tests -run '^TestLLVM22(Split|Arc|GLIBC)$' -count=1 -v`退出0，耗时180.100秒；核对两卷摘要、普通文件与登记链接、14组别名字节和28份许可证，并保留GLIBC需求不高于2.39的检查。
+
+首次catalog测试因新增149622136字节的`libLLVM.so.22.1`超过既有`FileCheck`单文件90MiB上限而退出1；撤回这个新增字段后复测退出0，没有放宽验证器。该大文件继续由完整归档摘要、严格打包验证与归档/安装副本行为检查覆盖，其余四个依赖副本登记单文件摘要。三个宿主模块的catalog测试和`go vet ./...`退出0，Linux amd64候选安装器、检查工具和原生测试程序以登记Go交叉编译为静态ELF x86-64，随后用检查工具和测试程序在NUC原生验收。
+
+候选保存在主仓`output/llvm22-trim/regular-v3/linux-amd64/`，原始日志保存在`output/llvm22-trim/linux-amd64-formal-v1/`。`split-red.log`、`archive-red.log`与`linux-amd64-catalog.log`保留上述失败，`copy-pack.log`、`copy-verify.log`、`copy-parts.log`、`archive-green.log`与`linux-amd64-catalog-green.log`记录修正后的结果。工具清单盘点首次命令因AWK表达式错误退出2，保留`tools-static-error.log`，修正后的只读盘点在`tools-static-final.log`记录35个入口；这不是工具链运行失败。
+
+NUC结束正式同步并释放已授权缓存后，可用空间54656436KiB，允许继续候选验收。该机为Ubuntu24.04.4、x86_64、glibc2.39。原始正式安装的外层libclang与真实`lib/cdh`入口分别在新进程加载，均实际退出0，日志为`nuc-original-outer.log`与`nuc-original-cdh.log`；不得把静态缺项推断写成原包加载失败。随后`Lstat`确认外层输入为已有符号链接，`nuc-original-deps.log`显示其`libLLVM.so.22.1`、ffi、edit与z3从宿主解析。对照后不再执行旧链接，也不为取得红灯重建旧普通文件安装。
+
+全新安装按816978591字节及67108864字节探测空间预留，两卷另占141057060字节。已提交的`llvm22-check`从这两卷完成全新安装，109.103秒退出0；正式`RunTo/Check`、同目录Clang/LLD22、C/C++字符串与异常运行、静态归档、LLVM工具、剥离后运行及真实`lib/cdh`下libclang加载通过，434个受检普通文件保持独立身份。安装路径为NUC主仓`build/llvm22-amd64-v3/install/llvm22`，探测路径为同级`probe`，原始日志为`nuc-native.log`。
+
+随后以预先构建的静态x86-64测试程序运行`-test.run '^TestLLVM22(GLIBC|Tools|Load|Copies)?$' -test.count=1 -test.v`。35工具、68库独立进程加载和五份普通副本检查通过，GLIBC检查52.06秒通过；`LLVMPolly.so`独立加载明确跳过1项，其ELF依赖继续由原测试检查。聚焦组最后的`TestLLVM22`因NUC检出的`PACKAGES.md`权限0664退出1，日志`nuc-tests.log`完整保留，不能把这一组合命令写成退出0。
+
+按主代理授权，逐文件`Lstat`确认28份许可证为普通单链接后，仅规范该目录文件权限为0644；实际变化为`PACKAGES.md`与`libgnutls-copyright`两项，内容及inode保持不变，证据为`nuc-license-mode.log`。只重跑`-test.run '^TestLLVM22$' -test.count=1 -test.v`，原有全部ELF依赖断言、工具身份和编译链接检查2.29秒退出0，日志`nuc-elf-final.log`；未修改测试以接受0664，也未重跑已通过的52秒GLIBC检查。
+
+`nuc-candidate-deps.log`确认外层候选libclang为独立普通文件且加载退出0，所需LLVM、ffi、edit、z3和xml2名称均解析到候选目录。NUC结束时可用53709820KiB，高于50GiB；当时NUC旧正式单卷摘要仍为原值。Ubuntu26.04 amd64、完整QEMU、安全组件和设备运行验收未执行。
+
+主代理复核后，两卷经普通独立复制、摘要和权限检查，以原子目录交换进入本机正式`linux-amd64/payload/llvm22/`。原单卷保存在组件`build/llvm22-trim/linux-amd64-regular-v1/payload-swap/`；静态x86-64安装程序通过相同身份检查和原子交换发布，旧程序保存在同级`installer-swap`。新程序2945186字节，SHA-256为`6e722d4d527bd47149fbdb2257a901338b008ab05e16ba814f6cb2007b353c71`，原始交换证据为`formal-publish.log`。
+
+清空`CDH_LLVM22_PARTS`后，使用相同登记Go与仓内缓存执行`go test ./tests -run '^TestLLVM22Arc$' -count=1 -v`，从正式目录读取两卷，90.638秒退出0。检查确认141057060压缩字节、419个普通文件、1个登记链接、14组别名字节及28份许可证，证据为`formal-archive.log`。本项未在NUC替换原正式安装，也未把候选原生检查记成主仓完整构建通过。
+
 ## 候选安装检查工具
 
 2026-09-16把候选安装与消费者检查维护在[工具源码](../../tools/llvm22-check/README.md)。它复用正式安装器，安装前核对连续分卷、真实摘要、TAR条目、独立文件身份和空间，拒绝未登记链接及错误架构。安装后检查成对编译器、C/C++异常运行、静态归档、二进制工具和libclang真实加载；失败保留候选与日志。该工具不修改正式catalog，不下载依赖，也不替代安全组件正式构建。
