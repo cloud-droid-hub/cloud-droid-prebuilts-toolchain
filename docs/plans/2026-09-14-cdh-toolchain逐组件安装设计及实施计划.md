@@ -28,7 +28,7 @@
 - 三个`cmd/cdh-toolchain/main.go`及测试：把CLI标准输出传给安装进度。
 - 根`README.md`和三个宿主`README.md`：记录字段、续跑、补齐、失败与用户内容边界。
 - 三个`bin/cdh-toolchain`：用固定Go 1.26.8重新构建对应宿主静态程序。
-- 三个`internal/version/version.go`：功能版本递增，且作为提交前最后编辑的文件。
+- 仓库根`version.go`：三个宿主共用一个版本，功能版本递增，且作为提交前最后编辑的文件。
 
 ## cdh-toolchain逐组件安装 Implementation Plan
 
@@ -134,7 +134,7 @@ README给出默认间隔、环境变量示例、进度样例、单删/多删补�
 - Modify: `darwin-arm64/bin/cdh-toolchain`
 - Modify: `linux-arm64/bin/cdh-toolchain`
 - Modify: `linux-amd64/bin/cdh-toolchain`
-- Modify last: three `internal/version/version.go`
+- Modify last: root `version.go`
 
 **Interfaces:**
 - Consumes: 已审查并通过测试的三宿主源码。
