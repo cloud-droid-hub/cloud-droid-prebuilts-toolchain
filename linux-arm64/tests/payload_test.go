@@ -463,11 +463,20 @@ func TestLLVM22(t *testing.T) {
 		return
 	}
 	spec.Archives = []catalog.Archive{archive}
-	dest := filepath.Join(t.TempDir(), "tools")
-	if err := install.Run(context.Background(), repo, dest, spec); err != nil {
+	root := os.Getenv("CDH_LLVM22_TEST_ROOT")
+	if root == "" {
+		dest := filepath.Join(t.TempDir(), "tools")
+		if err := install.Run(context.Background(), repo, dest, spec); err != nil {
+			t.Fatal(err)
+		}
+		root = filepath.Join(dest, "llvm22")
+	}
+	if !filepath.IsAbs(root) || filepath.Base(root) != "llvm22" {
+		t.Fatalf("invalid LLVM 22 root: %q", root)
+	}
+	if err := install.Check(context.Background(), filepath.Dir(root), spec); err != nil {
 		t.Fatal(err)
 	}
-	root := filepath.Join(dest, "llvm22")
 	hostLibs := map[string]bool{
 		"ld-linux-aarch64.so.1": true,
 		"libbsd.so.0":           true,

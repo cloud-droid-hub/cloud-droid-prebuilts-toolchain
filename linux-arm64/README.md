@@ -36,3 +36,31 @@ toolchain_progress component="LLVM 22" index=4 total=7 remaining=3 elapsed_secon
 目标父目录链通常必须由当前用户或`root`拥有，且不可由组或其它用户写入。`install`使用的`Run`只对当前UID所有、与父目录跨设备、组可写但非`world`可写的挂载根通过已打开的目录FD追加`sticky`位，并保留原有`setuid`、`setgid`和权限位。`check`不修改权限，缺少`sticky`位时直接拒绝；非跨设备的普通`0775`目录和任何`0777`目录仍会被拒绝。目标目录链与组件路径使用`openat`和`O_NOFOLLOW`打开，权限调整、身份核对与发布均通过已打开的目录或文件FD完成。
 
 Android编译需传入`--target=aarch64-linux-android<API>`、`--rtlib=compiler-rt`及选定的`--ld-path`。安装检查验证摘要、版本、文件模式和ELF架构，失败时不会改用系统程序。
+
+## LLVM22归档范围
+
+LLVM22.1.2保留以下35个工具入口、已有Clang resource、共享库、CMake元数据和`lib/cdh/LICENSES/`中的27份许可证及来源说明。裁掉58个项目未使用的分析或辅助工具；LLVM19及其它工具链不变。
+
+```text
+clang clang++ clang-22 clang-cpp clang-scan-deps dsymutil
+ld.lld ld64.lld lld lld-link wasm-ld
+llvm-addr2line llvm-ar llvm-as llvm-bitcode-strip llvm-cov llvm-cxxfilt
+llvm-dis llvm-dwp llvm-install-name-tool llvm-libtool-darwin llvm-link llvm-lipo
+llvm-nm llvm-objcopy llvm-objdump llvm-otool llvm-profdata llvm-ranlib
+llvm-readelf llvm-readobj llvm-size llvm-strings llvm-strip llvm-symbolizer
+```
+
+归档中仅`bin/ld.lld -> lld`保留登记链接，`clang`本来就是普通文件。其它45个工具与库别名按最终目标字节和权限保存为独立普通文件。外层`libLLVM`、`libclang`的`RUNPATH`为`$ORIGIN`，因此另加入下表四份普通副本，沿用原库的许可证，不改二进制或宿主依赖允许列表。
+
+| 目标路径 | 原始来源 | 字节 |
+| --- | --- | ---: |
+| `lib/libffi.so.8` | `lib/cdh/libffi.so.8.2.0` | 199009 |
+| `lib/libedit.so.2` | `lib/cdh/libedit.so.2.0.76` | 334905 |
+| `lib/libz3.so.4` | `lib/cdh/libz3.so.4` | 17396073 |
+| `lib/libxml2.so.16` | `lib/cdh/libxml2.so.16.1.2` | 1614633 |
+
+普通文件合计966508007字节、418个，归档共441个条目。压缩后154451176字节、2卷，SHA-256为`18374afd0db2a4a868d51f21f7aa1cc2646de41fec4e94b4e8e955575cc17027`。旧包为85458612字节、1卷；遵守普通文件别名规则并补齐上述依赖后，压缩包增加68992564字节。四份依赖副本本身增加19544620个展开字节，与未补依赖的普通文件候选相比，压缩包增加5950184字节。
+
+Linux消费者的`LIBCLANG_PATH`仍必须使用真实目录`llvm22/lib/cdh`。本包保持Ubuntu26.04库输入及glibc2.43宿主要求，不声明Ubuntu24.04兼容。`LLVMPolly.so`原样保留，但原包和候选均不能在普通进程中直接`dlopen`；额外通过原包`opt -load`加载也因重复注册Polly选项失败。这不属于登记消费者，不能据此宣称所有保留共享对象均可独立加载。
+
+`TestLLVM22Arc`只读取分片，核对摘要、链接类型、普通文件别名字节与许可证，不建立链接。原有`TestLLVM22`继续核对全部ELF依赖；`TestLLVM22Tools`、`TestLLVM22Copies`与`TestLLVM22Run`分别检查35个原生工具、四份副本的独立身份，以及C/C++编译运行。后三项使用`CDH_LLVM22_TEST_ROOT`指定已安装目录，路径及父目录必须规范且真实。额外诊断`TestLLVM22Load`在独立进程逐项加载68个库，显式跳过`LLVMPolly.so`插件的独立加载；首次69项诊断中该插件失败的日志保留，跳过不计为通过，原有ELF依赖检查仍覆盖该文件。

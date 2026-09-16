@@ -243,12 +243,16 @@ func Current() Spec {
 			Version: "22.1.2",
 			Dir:     "llvm22",
 			Format:  TarXZ,
-			SHA256:  "7badc7963ff970a476a4be9683d919f4e8f5e43c60a240b96e4f55df4481534d",
+			SHA256:  "18374afd0db2a4a868d51f21f7aa1cc2646de41fec4e94b4e8e955575cc17027",
 			Prefix:  "llvm-22.1.2-linux-arm64",
 			Parts: []Part{{
-				Path:   "payload/llvm22/llvm-22.1.2-linux-arm64.tar.xz.part-000",
-				Size:   85458612,
-				SHA256: "7badc7963ff970a476a4be9683d919f4e8f5e43c60a240b96e4f55df4481534d",
+				Path:   "payload/llvm22/llvm-22.1.2-linux-arm64-cdh.tar.xz.part-000",
+				Size:   94371840,
+				SHA256: "76d9a3970a7d8e89afba5ca7249fd807d1c7f2d1782819e600b7ca193ba294f0",
+			}, {
+				Path:   "payload/llvm22/llvm-22.1.2-linux-arm64-cdh.tar.xz.part-001",
+				Size:   60079336,
+				SHA256: "d28ee5e6c082622c44e2730c3816ab92aa82b37a9ef730d2c9725f8bbfe273a0",
 			}},
 			Probes: []Probe{{
 				Path:    "bin/clang",
@@ -282,6 +286,22 @@ func Current() Spec {
 				Path:   "lib/cdh/libclang-cpp.so.22.1",
 				Size:   62459120,
 				SHA256: "20a60fe73b4cb992d08369c731f8821e165274ad26387ae63e5ce839ba486b9e",
+			}, {
+				Path:   "lib/libffi.so.8",
+				Size:   199009,
+				SHA256: "1bc65683239c49763b470f89f6968286e088e4216b97e1188bce19a6e6d4f783",
+			}, {
+				Path:   "lib/libedit.so.2",
+				Size:   334905,
+				SHA256: "4e78810fe1ccaad87e20377644549c9c9c2fc0095bf63b1e437fc625849ef20c",
+			}, {
+				Path:   "lib/libz3.so.4",
+				Size:   17396073,
+				SHA256: "8de3409f0691cd121f097d2886f773e4357b5097360ee2c5d4e412bcd39303cf",
+			}, {
+				Path:   "lib/libxml2.so.16",
+				Size:   1614633,
+				SHA256: "4a4dea438b1f028117bd3b9c4f06788f1b466088c740d5c04d1973db68f877fe",
 			}, {
 				Path:   "lib/cdh/LICENSES/PACKAGES.md",
 				Size:   4931,

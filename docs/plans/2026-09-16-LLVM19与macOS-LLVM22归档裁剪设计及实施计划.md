@@ -52,6 +52,24 @@ Pixel6的正式`just build-secure-env`与`just test-secure-env`已在完整本�
 
 本次原始日志保存在主仓`output/llvm22-trim/darwin-regular-formal/`：`links-red.log`、`copy-red.log`记录替换前行为，`native.log`记录候选全新安装及原生探测，`focused.log`与`formal-install.log`分别记录聚焦检查和正式分卷的全新安装，`input-sha256.log`、`licenses.log`、`formal-ids.log`、`formal-sha256.log`及`previous-ids.log`、`previous-sha256.log`记录输入、正式文件和保留旧文件。该项不修改LLVM19、两份Linux归档或版本；主仓正式消费者验证、版本与发布仍由主代理继续执行。
 
+## Linux arm64 LLVM22普通文件归档记录
+
+Linux arm64保留LLVM22.1.2、35个工具入口、已有Clang resource、库与CMake元数据，以及全部27份许可证和来源说明。裁掉58个未使用的分析或辅助工具后，45个工具及库别名转为最终目标字节的普通文件，只有`bin/ld.lld -> lld`保留登记链接；`clang`本来就是普通文件。LLVM19、macOS和Linux amd64分卷均不在本项修改范围。
+
+外层`lib/libclang-22.so.1`在原包和此前普通文件候选中均因缺少`libz3.so.4`加载失败；完整`TestLLVM22`还识别出`libffi`、`libedit`与`libxml2`从宿主解析。保留该测试的全部ELF依赖检查与宿主库允许列表，按原库`$ORIGIN`路径补入[平台说明](../../linux-arm64/README.md#llvm22归档范围)登记的四份普通副本，来源均为原包`lib/cdh`内实际文件，不改库字节、权限或许可证。新增展开字节19544620，四组源和目标均为独立inode且`st_nlink == 1`。
+
+使用主仓维护的`llvm22-pack`，`pack`与`verify`同时传入四组`dest=source`映射，退出码均为0。严格验证确认所有保留路径、最终目标字节、权限与许可证一致。新归档418个普通文件、1个登记链接、441个条目，普通文件合计966508007字节。压缩后154451176字节、2卷，完整SHA-256为`18374afd0db2a4a868d51f21f7aa1cc2646de41fec4e94b4e8e955575cc17027`。旧正式包为85458612字节、1卷；普通文件别名与补齐依赖使压缩包增加68992564字节，不将此记录为体积缩减。与此前未补四份依赖的普通文件候选相比，压缩包增加5950184字节。
+
+两卷通过普通复制、SHA-256、权限、链接数及源目标inode核对，再以macOS原子交换进入`linux-arm64/payload/llvm22/`。旧单卷保存在组件`build/llvm22-trim/linux-arm64-regular-v1/payload-swap/`。类型化catalog登记新摘要、分卷及四份依赖文件检查，Linux arm64静态Go安装程序已重建；旧安装程序保存在同目录`installer-swap`，供原始制品回读。
+
+在登记Ubuntu26.04 arm64 Docker镜像内，从新正式分片调用已提交的`tools/llvm22-check`，全新安装与原生消费验证退出0，耗时112.089秒。安装根为组件`build/llvm22-trim/linux-arm64-regular-v1/formal-install/llvm22`，探测目录为同级`formal-probe`。正式`install.RunTo/Check`、同目录Clang/LLD22、C/C++字符串与异常运行、静态归档链接、LLVM工具、剥离后运行及真实`lib/cdh`下libclang加载均通过，受检433个普通文件保持独立身份。随后在该安装上运行原`TestLLVM22`及新增工具、副本、路径、C/C++和独立库加载测试，六项顶层测试退出0：35个工具与68个库分别在新进程通过；`LLVMPolly.so`插件的独立加载明确跳过1项，不计为通过，其ELF依赖仍由原测试核对。
+
+`LLVMPolly.so`原包与候选字节相同。早期直接加载缺少LLVM宿主符号，额外用原包`opt -load`加载原包或候选都因重复注册Polly选项失败；本项未证实有登记消费者使用这两种额外加载方式，保留文件及失败日志，不扩展插件用法。此包保持Ubuntu26.04和glibc2.43基线，未声明Ubuntu24.04兼容，也未在该候选上执行主仓完整QEMU、安全组件或设备运行验收。
+
+归档行为测试`TestLLVM22Arc`对旧包退出1，先拒绝前缀外的AppleDouble元数据；对新正式分片退出0，耗时98.234秒，核对两卷真实摘要、418个普通文件、登记链接、14组别名字节和27份许可证。路径检查先在非规范路径及父级链接元数据注入时取得红灯，再补齐完整父目录链检查并退出0；测试未实际创建链接。三个宿主模块各自的`go test ./internal/catalog -count=1 -v`与`go vet ./...`退出0，这些macOS上的Go检查不表示运行了Linux amd64程序。结束时本机可用空间59878624 KiB，高于50 GiB。
+
+原始日志位于主仓`output/llvm22-trim/linux-arm64-formal-v1/`。`outer-old.log`、`outer-red.log`、`deps-red-v2.log`保留既有依赖故障；`layout-red.log`同时记录首次挂载未包含父目录`go.mod`的检查失败，修正挂载后才取得真实依赖红灯。`layout-green.log`虽使用该文件名，实际仍退出1，原因是上述Polly额外加载失败；`polly-old-red.log`还记录原包中的旧链接被普通文件检查拒绝。`polly-old-host.log`与`polly-copy-host.log`保留原包`opt`对照失败。最终依据为`copy-pack.log`、`copy-verify.log`、`copy-parts.log`、`archive-green.log`、`formal-native.log`、`formal-tests.log`、`load-final.log`、`path-red.log`、`path-green.log`、`parts-before-ids.log`及`parts-final-ids.log`，未覆盖早期失败。
+
 ## 候选安装检查工具
 
 2026-09-16把候选安装与消费者检查维护在[工具源码](../../tools/llvm22-check/README.md)。它复用正式安装器，安装前核对连续分卷、真实摘要、TAR条目、独立文件身份和空间，拒绝未登记链接及错误架构。安装后检查成对编译器、C/C++异常运行、静态归档、二进制工具和libclang真实加载；失败保留候选与日志。该工具不修改正式catalog，不下载依赖，也不替代安全组件正式构建。
