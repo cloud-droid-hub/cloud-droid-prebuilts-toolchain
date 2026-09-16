@@ -1,0 +1,2 @@
+# 原始命令输出按字节保存。
+docs/evidence/aosp15-v1/*.log -whitespace

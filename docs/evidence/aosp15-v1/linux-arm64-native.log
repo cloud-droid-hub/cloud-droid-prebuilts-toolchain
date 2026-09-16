@@ -1,0 +1,5 @@
+=== RUN   TestAOSP15Arc
+    aosp15_test.go:53: AIDL generation: exit status 1
+        ERROR: /repo/build/test-tmp/TestAOSP15Arc1162863768/002/Value.aidl:1.33-39: Value should be declared in a file called sample/tools/Value.aidl
+--- FAIL: TestAOSP15Arc (0.18s)
+FAIL

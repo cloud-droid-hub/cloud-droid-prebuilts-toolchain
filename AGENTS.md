@@ -20,6 +20,7 @@
 - Linux arm64没有Google官方宿主包时，只使用本目录LLVM 22与NDK目标sysroot、Clang 21 resource目录，不能运行其它宿主架构的NDK程序。
 - JDK固定为Temurin 21 LTS `21.0.12.1+1`。
 - Bazel固定为`8.5.1`，三个宿主目录都从本仓归档安装对应原生程序，构建时不得在线下载或改用系统Bazel。
+- AOSP15接口生成工具固定为`android-15.0.0_r36`的AIDL与HIDL，统一安装到`aosp15/`。macOS仅保留原始通用程序的arm64部分，Linux沿用对应宿主原始字节；运行库、来源元数据和许可证随包发布。
 - Rust、Cargo与Rustdoc固定为`1.97.1`，Rustc内部LLVM固定为`22.1.6`，三个宿主目录都包含`aarch64-linux-android`标准库。构建时必须从本仓`rust197/`安装，不得调用rustup联网安装、改用系统Rust或静默回退。
 
 三个宿主的安装程序和NDK输入分别遵守以下限制；从仓库根调用安装程序时，`--repo`必须指向对应的宿主目录。

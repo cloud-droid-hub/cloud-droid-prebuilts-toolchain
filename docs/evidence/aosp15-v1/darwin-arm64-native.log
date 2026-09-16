@@ -1,0 +1,5 @@
+=== RUN   TestAOSP15Arc
+    aosp15_test.go:53: AIDL generation: exit status 1
+        ERROR: /Users/apple/Documents/cloud-droid-hub/tools/toolchains/prebuilts/build/test-tmp/TestAOSP15Arc2073490966/002/Value.aidl:1.33-39: Value should be declared in a file called sample/tools/Value.aidl
+--- FAIL: TestAOSP15Arc (1.03s)
+FAIL

@@ -1,0 +1,6 @@
+=== RUN   TestCatalog
+    catalog_test.go:13: ready=true archives=7
+--- FAIL: TestCatalog (0.00s)
+FAIL
+FAIL	github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/catalog	2.174s
+FAIL

@@ -349,7 +349,7 @@ func Current() Spec {
 				Want:    []string{"rustdoc 1.97.1"},
 				Machine: MachARM64,
 			}},
-		}},
+		}, aosp15()},
 	}
 }
 

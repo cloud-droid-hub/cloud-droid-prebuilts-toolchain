@@ -1,0 +1,6 @@
+=== RUN   TestAOSP15Arc
+    aosp15_test.go:56: AIDL generation: exit status 1
+        ERROR: /repo/build/test-tmp/TestAOSP15Arc4210174744/002/sample/tools/Value.aidl:1.33-39: directory /repo/build/test-tmp/TestAOSP15Arc4210174744/002/ is not found in any of the import paths:
+         - 
+--- FAIL: TestAOSP15Arc (0.16s)
+FAIL

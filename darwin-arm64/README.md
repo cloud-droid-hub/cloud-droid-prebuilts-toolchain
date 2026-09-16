@@ -4,6 +4,8 @@
 
 LLVM 22.1.8按本仓消费者裁剪并把非登记别名转换为普通文件后，为351706968字节、4卷；原归档为1479903744字节、16卷，压缩量减少76.2%。此前保留20个符号链接的裁剪包为195159848字节、3卷；本次把其中18个别名改为独立普通文件，压缩量增加156547120字节。版本、宿主架构和保留文件的原始字节不变，LLVM 19保持原样。新归档名为`LLVM-22.1.8-macOS-ARM64-cdh.tar.xz`，包内根目录仍为`LLVM-22.1.8-macOS-ARM64`；完整SHA-256与每卷大小、摘要由`internal/catalog/catalog.go`登记。
 
+`aosp15/`提供固定`android-15.0.0_r36`的`bin/aidl`、`bin/hidl-gen`及`lib64/libc++.dylib`。三份原始通用二进制以登记LLVM22的`llvm-lipo -thin arm64`保留arm64部分，归档2317375字节、单卷、九份许可证，无链接。实际安装与AIDL／HIDL生成已验证，完整设备构建另行验收，见[AOSP15记录](../docs/evidence/aosp15-v1/README.md)。
+
 归档保留完整`include/`、`share/`和`lib/clang/`，以及`libc++`、`libc++abi`、`libunwind`的静态库、动态库与普通文件别名、`libclang.dylib`与`libclang-cpp.dylib`。仅保留登记的`bin/clang -> clang-22`和`bin/ld.lld -> lld`两项符号链接，其余8569个文件都是普通文件，普通文件总量为2211261752字节。上游许可证与通知均保留，完整LLVM许可证同时放在`share/licenses/LLVM-LICENSE.TXT`。保留的`bin/`程序和别名如下：
 
 ```text
@@ -43,7 +45,7 @@ dest="$PWD/output/darwin-arm64"
 `install`按组件输出机器可读进度，字段固定为`component`、`index`、`total`、`remaining`、`elapsed_seconds`和`state`：
 
 ```text
-toolchain_progress component="LLVM 22" index=4 total=7 remaining=3 elapsed_seconds=10 state=installing
+toolchain_progress component="LLVM 22" index=4 total=8 remaining=4 elapsed_seconds=10 state=installing
 ```
 
 组件展开期间默认每5秒持续输出`state=installing`；可用`CDH_TOOLCHAIN_PROGRESS_INTERVAL=15s`等大于零的Go duration调整。收到`SIGINT`或`SIGTERM`时返回非零，清理未发布的临时组件并保留此前已完成组件。中断后直接重跑原命令，已经完整安装并通过检查的组件显示`state=skipped`且不重读归档。删除一个组件只补一个，删除多个组件只补对应缺项。组件路径存在但检查失败时明确返回非零，不删除或覆盖该目录；目标根中的用户额外文件保持原样。使用者只有在自行备份并明确移走无效组件后，才能让安装器把该路径作为缺项补齐。

@@ -12,6 +12,8 @@ linux-amd64/
 
 归档以不超过90 MiB的普通Git对象保存，不使用Git LFS。`<host>/bin/cdh-toolchain`负责摘要校验、安全展开、宿主架构检查和逐组件原子发布。主项目把本仓放在`tools/toolchains/prebuilts/`，再把当前宿主工具展开到`output/toolchains/<host>/`；缺失、版本错误或架构不符都会直接失败，不会改用系统工具。
 
+三个宿主还提供固定`android-15.0.0_r36`的AIDL与HIDL生成工具，统一安装到`aosp15/`，使调用方可以直接使用登记输入。三份归档合计9673774字节，均为普通文件；来源、许可证、安装与实际代码生成结果见[AOSP15工具记录](docs/evidence/aosp15-v1/README.md)。设备构建器接入单独提交，本次工具发布不能代替完整Codec2或发行验收。
+
 ## 安装当前平台
 
 从仓库根目录指定宿主目录：
@@ -29,7 +31,7 @@ dest="$PWD/output/$host"
 `install`在检查和展开每个组件时输出稳定、机器可读的进度行，例如：
 
 ```text
-toolchain_progress component="LLVM 22" index=4 total=7 remaining=3 elapsed_seconds=10 state=installing
+toolchain_progress component="LLVM 22" index=4 total=8 remaining=4 elapsed_seconds=10 state=installing
 ```
 
 字段语义如下：
