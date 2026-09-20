@@ -23,8 +23,6 @@ func Resolve(root, name string, spec catalog.Spec) (string, error) {
 		dir = "go126"
 	case "jdk":
 		dir = "jdk21"
-	case "llvm19":
-		dir = "llvm19"
 	case "llvm22":
 		dir = "llvm22"
 	case "llvm22-clang":

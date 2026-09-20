@@ -15,7 +15,7 @@
 
 - Go固定为`1.26.8`，同时保留主项目使用Go 1.27.x验证源码兼容性的能力。
 - LLVM 22在macOS使用`22.1.8`，Linux使用Ubuntu 26.04的`22.1.2`。Clang与LLD必须来自同一个LLVM目录。
-- LLVM 19固定为`19.1.7`，用于仍明确要求该版本的宿主构建。
+- 三个宿主目录都不再发布LLVM 19；宿主与Android目标构建统一使用本仓裁剪后的LLVM 22目录，需要旧版本时从Git历史取回，不在本仓重新登记。
 - Android NDK固定为r29 revision`29.0.14206865`，NDK内Clang与LLD主版本固定为21。NDK内容只保留Android arm64目标所需的头文件、库、构建元数据、许可证与必要宿主工具。
 - Linux arm64没有Google官方宿主包时，只使用本目录LLVM 22与NDK目标sysroot、Clang 21 resource目录，不能运行其它宿主架构的NDK程序。
 - JDK固定为Temurin 21 LTS `21.0.12.1+1`。
