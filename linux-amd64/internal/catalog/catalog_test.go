@@ -9,7 +9,7 @@ func TestCatalog(t *testing.T) {
 	if spec.Host != "linux-amd64" {
 		t.Fatalf("host=%q", spec.Host)
 	}
-	if !spec.Ready || len(spec.Archives) != 7 {
+	if !spec.Ready || len(spec.Archives) != 8 {
 		t.Fatalf("ready=%v archives=%d", spec.Ready, len(spec.Archives))
 	}
 	archive := spec.Archives[0]
@@ -38,6 +38,10 @@ func TestCatalog(t *testing.T) {
 	}
 	archive = spec.Archives[6]
 	if archive.Name != "AOSP 15 tools" || archive.Version != "android-15.0.0_r36" || archive.Dir != "aosp15" {
+		t.Fatalf("archive=%+v", archive)
+	}
+	archive = spec.Archives[7]
+	if archive.Name != "Android SDK" || archive.Version != "37.0.0" || archive.Dir != "android-sdk" {
 		t.Fatalf("archive=%+v", archive)
 	}
 	if err := Valid(spec); err != nil {

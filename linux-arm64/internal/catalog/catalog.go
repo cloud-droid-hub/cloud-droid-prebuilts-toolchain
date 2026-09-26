@@ -290,7 +290,7 @@ func Current() Spec {
 				Want:    []string{"rustdoc 1.97.1"},
 				Machine: ELFARM64,
 			}},
-		}, aosp15()},
+		}, aosp15(), androidSDK()},
 	}
 }
 

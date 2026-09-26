@@ -1,0 +1,19 @@
+toolchain_progress component="Go" index=1 total=8 remaining=7 elapsed_seconds=0 state=checking
+toolchain_progress component="Go" index=1 total=8 remaining=7 elapsed_seconds=0 state=skipped
+toolchain_progress component="JDK" index=2 total=8 remaining=6 elapsed_seconds=0 state=checking
+toolchain_progress component="JDK" index=2 total=8 remaining=6 elapsed_seconds=0 state=skipped
+toolchain_progress component="LLVM 22" index=3 total=8 remaining=5 elapsed_seconds=0 state=checking
+toolchain_progress component="LLVM 22" index=3 total=8 remaining=5 elapsed_seconds=0 state=skipped
+toolchain_progress component="Android NDK" index=4 total=8 remaining=4 elapsed_seconds=0 state=checking
+toolchain_progress component="Android NDK" index=4 total=8 remaining=4 elapsed_seconds=0 state=skipped
+toolchain_progress component="Bazel" index=5 total=8 remaining=3 elapsed_seconds=0 state=checking
+toolchain_progress component="Bazel" index=5 total=8 remaining=3 elapsed_seconds=0 state=skipped
+toolchain_progress component="Rust" index=6 total=8 remaining=2 elapsed_seconds=0 state=checking
+toolchain_progress component="Rust" index=6 total=8 remaining=2 elapsed_seconds=0 state=skipped
+toolchain_progress component="AOSP 15 tools" index=7 total=8 remaining=1 elapsed_seconds=0 state=checking
+toolchain_progress component="AOSP 15 tools" index=7 total=8 remaining=1 elapsed_seconds=0 state=skipped
+toolchain_progress component="Android SDK" index=8 total=8 remaining=0 elapsed_seconds=0 state=checking
+toolchain_progress component="Android SDK" index=8 total=8 remaining=0 elapsed_seconds=0 state=installing
+toolchain_progress component="Android SDK" index=8 total=8 remaining=0 elapsed_seconds=1 state=installed
+installed /Volumes/7100/cloud-droid-hub/output/toolchains/darwin-arm64
+install-exit=0 seconds=3

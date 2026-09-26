@@ -1,0 +1,122 @@
+vet-exit=0
+ok  	github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/cmd/cdh-toolchain	1.762s
+ok  	github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/catalog	1.340s
+ok  	github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/install	10.646s
+panic: test timed out after 10m0s
+	running tests:
+		TestPayloads (3m56s)
+
+goroutine 202 [running]:
+testing.(*M).startAlarm.func1()
+	/Volumes/7100/cloud-droid-hub/output/toolchains/darwin-arm64/go126/src/testing/testing.go:2802 +0x2cc
+created by time.goFunc
+	/Volumes/7100/cloud-droid-hub/output/toolchains/darwin-arm64/go126/src/time/sleep.go:215 +0x38
+
+goroutine 1 [chan receive, 4 minutes]:
+testing.(*T).Run(0x161869f76008, {0x1022c52a8?, 0x49186700222a580?}, 0x102490140)
+	/Volumes/7100/cloud-droid-hub/output/toolchains/darwin-arm64/go126/src/testing/testing.go:2109 +0x3bc
+testing.runTests.func1(0x161869f76008)
+	/Volumes/7100/cloud-droid-hub/output/toolchains/darwin-arm64/go126/src/testing/testing.go:2585 +0x40
+testing.tRunner(0x161869f76008, 0x161869f65c48)
+	/Volumes/7100/cloud-droid-hub/output/toolchains/darwin-arm64/go126/src/testing/testing.go:2036 +0xc4
+testing.runTests({0x1022d4119, 0x3a}, {0x1022d490e, 0x40}, 0x161869f2a018, {0x1024bbf40, 0xb, 0xb}, {0x80803437510f6829?, 0x1022c64dd?, ...})
+	/Volumes/7100/cloud-droid-hub/output/toolchains/darwin-arm64/go126/src/testing/testing.go:2583 +0x3f0
+testing.(*M).Run(0x161869f1a320)
+	/Volumes/7100/cloud-droid-hub/output/toolchains/darwin-arm64/go126/src/testing/testing.go:2443 +0x578
+main.main()
+	_testmain.go:66 +0x80
+
+goroutine 186 [syscall]:
+syscall.syscalln(0x1021d8e50, {0x16186a7ca7d0, 0x3, 0x3})
+	/Volumes/7100/cloud-droid-hub/output/toolchains/darwin-arm64/go126/src/runtime/sys_darwin.go:38 +0x20
+syscall.syscall(0x16186a7ca828?, 0x1021ec284?, 0x800000?, 0x7ffff800000?)
+	/Volumes/7100/cloud-droid-hub/output/toolchains/darwin-arm64/go126/src/syscall/syscall_darwin.go:384 +0x24
+syscall.read(0x16186c749020?, {0x161869ebecca?, 0x16186a7ca868?, 0x1021ec44c?})
+	/Volumes/7100/cloud-droid-hub/output/toolchains/darwin-arm64/go126/src/syscall/zsyscall_darwin_arm64.go:1245 +0x48
+syscall.Read(...)
+	/Volumes/7100/cloud-droid-hub/output/toolchains/darwin-arm64/go126/src/syscall/syscall_unix.go:183
+internal/poll.ignoringEINTRIO(...)
+	/Volumes/7100/cloud-droid-hub/output/toolchains/darwin-arm64/go126/src/internal/poll/fd_unix.go:738
+internal/poll.(*FD).Read(0x16186c749020, {0x161869ebecca, 0x1, 0x1})
+	/Volumes/7100/cloud-droid-hub/output/toolchains/darwin-arm64/go126/src/internal/poll/fd_unix.go:161 +0x1a0
+os.(*File).read(...)
+	/Volumes/7100/cloud-droid-hub/output/toolchains/darwin-arm64/go126/src/os/file_posix.go:30
+os.(*File).Read(0x161869e92190, {0x161869ebecca?, 0x102491eb8?, 0x1024b5490?})
+	/Volumes/7100/cloud-droid-hub/output/toolchains/darwin-arm64/go126/src/os/file.go:144 +0x68
+github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/install.(*partRead).Read(0x16186a112bd0, {0x161869ebecca, 0x1, 0x1})
+	/Volumes/7100/cloud-droid-hub/tools/toolchains/prebuilts/darwin-arm64/internal/install/install.go:1380 +0x6c
+github.com/ulikunitz/xz.(*countingReader).Read(0x16186cb52140, {0x161869ebecca?, 0x16186a112bd0?, 0x161869ebecca?})
+	/Users/m4/go/pkg/mod/github.com/ulikunitz/xz@v0.5.16/reader.go:242 +0x2c
+io.(*LimitedReader).Read(0x16186b0ac0d8, {0x161869ebecca?, 0x16186cb52140?, 0x161869ebecca?})
+	/Volumes/7100/cloud-droid-hub/output/toolchains/darwin-arm64/go126/src/io/io.go:479 +0x48
+github.com/ulikunitz/xz/lzma.(*breader).ReadByte(0x16186a1fa0c0)
+	/Users/m4/go/pkg/mod/github.com/ulikunitz/xz@v0.5.16/lzma/breader.go:31 +0x34
+github.com/ulikunitz/xz/lzma.(*rangeDecoder).updateCode(0x16186b0ac0f0)
+	/Users/m4/go/pkg/mod/github.com/ulikunitz/xz@v0.5.16/lzma/rangecodec.go:216 +0x28
+github.com/ulikunitz/xz/lzma.(*rangeDecoder).DirectDecodeBit(0x16186a7caae8?)
+	/Users/m4/go/pkg/mod/github.com/ulikunitz/xz@v0.5.16/lzma/rangecodec.go:185 +0x84
+github.com/ulikunitz/xz/lzma.directCodec.Decode(0x40?, 0x16186b0ac0f0)
+	/Users/m4/go/pkg/mod/github.com/ulikunitz/xz@v0.5.16/lzma/directcodec.go:31 +0x54
+github.com/ulikunitz/xz/lzma.(*distCodec).Decode(0x161869ffcbe0, 0x16186b0ac0f0, 0x1?)
+	/Users/m4/go/pkg/mod/github.com/ulikunitz/xz@v0.5.16/lzma/distcodec.go:131 +0xd4
+github.com/ulikunitz/xz/lzma.(*decoder).readOp(0x16186a112060)
+	/Users/m4/go/pkg/mod/github.com/ulikunitz/xz@v0.5.16/lzma/decoder.go:118 +0x10c
+github.com/ulikunitz/xz/lzma.(*decoder).decompress(0x16186a112060)
+	/Users/m4/go/pkg/mod/github.com/ulikunitz/xz@v0.5.16/lzma/decoder.go:200 +0x6c
+github.com/ulikunitz/xz/lzma.(*decoder).Read(0x16186a112060, {0x161869ecaf05, 0x10fb, 0x10fb})
+	/Users/m4/go/pkg/mod/github.com/ulikunitz/xz@v0.5.16/lzma/decoder.go:268 +0xb0
+github.com/ulikunitz/xz/lzma.(*Reader2).Read(0x16186cb52190, {0x161869ec4000, 0x8000, 0x8000})
+	/Users/m4/go/pkg/mod/github.com/ulikunitz/xz@v0.5.16/lzma/reader2.go:141 +0x98
+io.(*teeReader).Read(0x16186b0b0000, {0x161869ec4000, 0x161800008000?, 0x8000})
+	/Volumes/7100/cloud-droid-hub/output/toolchains/darwin-arm64/go126/src/io/io.go:628 +0x30
+github.com/ulikunitz/xz.(*blockReader).Read(0x16186cb52140, {0x161869ec4000?, 0x16186a7cadc8?, 0x1021d7bc8?})
+	/Users/m4/go/pkg/mod/github.com/ulikunitz/xz@v0.5.16/reader.go:306 +0x30
+github.com/ulikunitz/xz.(*streamReader).Read(0x16186cb520f0, {0x161869ec4000, 0x8000, 0x8000})
+	/Users/m4/go/pkg/mod/github.com/ulikunitz/xz@v0.5.16/reader.go:220 +0x16c
+github.com/ulikunitz/xz.(*Reader).Read(0x16186a112c00, {0x161869ec4000, 0x8000, 0x8000})
+	/Users/m4/go/pkg/mod/github.com/ulikunitz/xz@v0.5.16/reader.go:112 +0x140
+github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/install.(*ctxRead).Read(0x16186b0b0160, {0x161869ec4000, 0x8000, 0x8000})
+	/Volumes/7100/cloud-droid-hub/tools/toolchains/prebuilts/darwin-arm64/internal/install/install.go:1242 +0x6c
+archive/tar.(*regFileReader).Read(0x16186b0ac0c0, {0x161869ec4000?, 0x16186a7caf58?, 0x0?})
+	/Volumes/7100/cloud-droid-hub/output/toolchains/darwin-arm64/go126/src/archive/tar/reader.go:702 +0x60
+archive/tar.(*Reader).Read(0x161869f76248, {0x161869ec4000?, 0x8000?, 0x0?})
+	/Volumes/7100/cloud-droid-hub/output/toolchains/darwin-arm64/go126/src/archive/tar/reader.go:663 +0x38
+github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/install.(*ctxRead).Read(0x16186a288080, {0x161869ec4000, 0x8000, 0x8000})
+	/Volumes/7100/cloud-droid-hub/tools/toolchains/prebuilts/darwin-arm64/internal/install/install.go:1242 +0x6c
+io.copyBuffer({0x102491e58, 0x16186a2e0110}, {0x102492420, 0x16186a288080}, {0x0, 0x0, 0x0})
+	/Volumes/7100/cloud-droid-hub/output/toolchains/darwin-arm64/go126/src/io/io.go:429 +0x18c
+io.Copy(...)
+	/Volumes/7100/cloud-droid-hub/output/toolchains/darwin-arm64/go126/src/io/io.go:388
+os.genericReadFrom(0x16186a7cb108?, {0x102492420?, 0x16186a288080?})
+	/Volumes/7100/cloud-droid-hub/output/toolchains/darwin-arm64/go126/src/os/file.go:205 +0x44
+os.(*File).ReadFrom(0x161869e73808?, {0x102492420?, 0x16186a288080?})
+	/Volumes/7100/cloud-droid-hub/output/toolchains/darwin-arm64/go126/src/os/file.go:181 +0x5c
+io.copyBuffer({0x102491e98, 0x16186a2e0110}, {0x102492420, 0x16186a288080}, {0x0, 0x0, 0x0})
+	/Volumes/7100/cloud-droid-hub/output/toolchains/darwin-arm64/go126/src/io/io.go:415 +0x14c
+io.Copy(...)
+	/Volumes/7100/cloud-droid-hub/output/toolchains/darwin-arm64/go126/src/io/io.go:388
+github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/install.untar({0x102492fc0, 0x1024e9800}, {0x102492420, 0x16186b0b0160}, 0x161869e921a8, {0x1022c5111, 0xb})
+	/Volumes/7100/cloud-droid-hub/tools/toolchains/prebuilts/darwin-arm64/internal/install/install.go:718 +0x38c
+github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/install.unpack({0x102492fc0, 0x1024e9800}, {0x16186b0cc690?, 0x1021695a0?}, 0x161869e92188, {{0x1022c2da3, 0x4}, {0x1022c3359, 0x6}, {0x1022c3563, ...}, ...})
+	/Volumes/7100/cloud-droid-hub/tools/toolchains/prebuilts/darwin-arm64/internal/install/install.go:638 +0x3b8
+github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/install.installArc({0x102492fc0, 0x1024e9800}, {0x16186b0cc690, 0x45}, 0x161869e92950, {{0x1022c2da3, 0x4}, {0x1022c3359, 0x6}, {0x1022c3563, ...}, ...})
+	/Volumes/7100/cloud-droid-hub/tools/toolchains/prebuilts/darwin-arm64/internal/install/install.go:277 +0x188
+github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/install.RunTo({0x102492fc0, 0x1024e9800}, {0x161869e241e4, 0x45}, {0x16186b0c4d20, 0x68}, {{0x1022c5758, 0xc}, 0x1, {0x16186b3b6008, ...}}, ...)
+	/Volumes/7100/cloud-droid-hub/tools/toolchains/prebuilts/darwin-arm64/internal/install/install.go:126 +0x65c
+github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/install.Run(...)
+	/Volumes/7100/cloud-droid-hub/tools/toolchains/prebuilts/darwin-arm64/internal/install/install.go:36
+github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/tests.TestPayloads(0x16186b0bab48)
+	/Volumes/7100/cloud-droid-hub/tools/toolchains/prebuilts/darwin-arm64/tests/payload_test.go:32 +0x1b0
+testing.tRunner(0x16186b0bab48, 0x102490140)
+	/Volumes/7100/cloud-droid-hub/output/toolchains/darwin-arm64/go126/src/testing/testing.go:2036 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/Volumes/7100/cloud-droid-hub/output/toolchains/darwin-arm64/go126/src/testing/testing.go:2101 +0x3a8
+
+goroutine 9 [select]:
+github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/install.(*progressOut).startBeat.func1()
+	/Volumes/7100/cloud-droid-hub/tools/toolchains/prebuilts/darwin-arm64/internal/install/install.go:207 +0x100
+created by github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/install.(*progressOut).startBeat in goroutine 186
+	/Volumes/7100/cloud-droid-hub/tools/toolchains/prebuilts/darwin-arm64/internal/install/install.go:202 +0x128
+FAIL	github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/tests	600.994s
+FAIL
+test-exit=1 seconds=603

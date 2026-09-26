@@ -1,0 +1,19 @@
+=== RUN   TestCatalog
+--- PASS: TestCatalog (0.00s)
+PASS
+ok  	github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/catalog	0.628s
+=== RUN   TestAndroidSDK
+--- PASS: TestAndroidSDK (9.70s)
+=== RUN   TestNDK29
+    payload_test.go:176: archive={Name:Bazel Version:8.5.1 Dir:bazel851 Format:2 SHA256:d58912c25ec81549ec4d1768ffe1134578dc0878f84190d3743a86aed2d2cf6b Prefix:bazel-8.5.1 Parts:[{Path:payload/bazel851/bazel-8.5.1-darwin-arm64.tar.xz.part-000 Size:52001564 SHA256:d58912c25ec81549ec4d1768ffe1134578dc0878f84190d3743a86aed2d2cf6b}] Probes:[{Path:bin/bazel Args:[--version] Want:[bazel 8.5.1] Env:[] Machine:1}] Files:[{Path:LICENSE Size:11358 SHA256:cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30 Want:[Apache License]}] DataOnly:false}
+--- FAIL: TestNDK29 (0.00s)
+=== RUN   TestBazel
+    payload_test.go:430: bazel version: fork/exec /Volumes/7100/cloud-droid-hub/tools/toolchains/prebuilts/build/test-tmp/TestBazel3684176705/001/tools/bazel851/bin/bazel: no such file or directory: 
+--- FAIL: TestBazel (77.88s)
+=== RUN   TestRust197
+    payload_test.go:492: archive={Name:AOSP 15 tools Version:android-15.0.0_r36 Dir:aosp15 Format:1 SHA256:1b2110fd2ca5f3c8e72c801ecd2fc0e97fe15f0b9c92361bf8b7ffc347c53969 Prefix:aosp15 Parts:[{Path:payload/aosp15/aosp-tools-android-15.0.0_r36-darwin-arm64.tar.gz.part-000 Size:2317375 SHA256:1b2110fd2ca5f3c8e72c801ecd2fc0e97fe15f0b9c92361bf8b7ffc347c53969}] Probes:[{Path:bin/aidl Args:[--help] Want:[AIDL Compiler:] Env:[] Machine:1}] Files:[{Path:source.properties Size:144 SHA256:1b4db4a8eba1b12ed61fb96f5d90bc74be5d7973c0d1dc6cfb772b9a7d590e58 Want:[Pkg.Revision=android-15.0.0_r36]} {Path:bin/aidl Size:3610376 SHA256:e9b95ee3a5cdbd646acf66d95fed208125f99232be914a6d27d702ebd9c1d591 Want:[]} {Path:bin/hidl-gen Size:3800600 SHA256:099e1113b9908f57559be64f6574f7bbb085a3ecb7d8f5da9312fb92deca566d Want:[]} {Path:lib64/libc++.dylib Size:1139168 SHA256:59a3b915feff155f5c776580ca19f0b46326099dd561ff1448bdc3fcb123e9d9 Want:[]}] DataOnly:false}
+--- FAIL: TestRust197 (0.00s)
+FAIL
+FAIL	github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/tests	88.552s
+FAIL
+exit=1 seconds=89

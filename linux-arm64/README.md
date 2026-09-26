@@ -6,6 +6,8 @@ NDK不包含Google发布的Linux amd64宿主程序。Android arm64编译使用�
 
 `aosp15/`提供固定`android-15.0.0_r36`的原生`bin/aidl`、`bin/hidl-gen`、`lib64/libc++.so`与`lib64/libc_musl.so`，均保持上游`linux_musl-arm64`字节。归档3893445字节、单卷、九份许可证，无链接。Ubuntu26.04 arm64原生容器的实际安装及AIDL／HIDL生成通过，未在开发板执行完整设备构建，见[AOSP15记录](../docs/evidence/aosp15-v1/README.md)。
 
+`android-sdk/`提供Build Tools 37.0.0与Platform `android-36` r2的裁剪内容。Google不发布Linux arm64原生程序，`aapt2`、`aidl`、`zipalign`取已登记的Commit451 `android-arm-build-tools` 37.0.0归档原始字节（由`android-17.0.0_r1`源码构建，依赖宿主glibc、`libstdc++.so.6`与`libz.so.1`）；`d8`、`apksigner`、两个jar与`android.jar`取官方归档。归档47373833字节、单卷。Ubuntu26.04 arm64原生容器实际安装并完成APK构建、签名与回读，见[Android SDK记录](../docs/evidence/android-sdk-v1/README.md)。
+
 在仓库根执行：
 
 ```sh

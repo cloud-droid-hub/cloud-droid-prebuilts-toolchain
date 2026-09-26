@@ -1,0 +1,101 @@
+# 2026-09-26 官方来源（repository2-1.xml登记SHA-1）与本仓归档
+build-tools_r37_macosx.zip: OK
+build-tools_r37_linux.zip: OK
+platform-36_r02.zip: OK
+66135704 build-tools_r37_linux.zip
+81933386 build-tools_r37_macosx.zip
+65878410 platform-36_r02.zip
+01af179347cbcd9c208b7f8171f7b21f6dd1d2f85bcd15e88caa51d5d7b86060  build-tools_r37_linux.zip
+b5b1ac529028a49f11b596b89d9b34252e0f39388ee7dbd16ae3110f1c9c5722  build-tools_r37_macosx.zip
+37607369a28c5b640b3a7998868d45898ebcb777565a0e85f9acf36f29631d2e  platform-36_r02.zip
+# Linux arm64原生程序来源：主仓已登记android-build-tools-37.0.0-linux-arm64-20260618.tar.xz
+29b1fa192c005d42c228b6ad0f0ad29161453be324308c3bfaa5783c7f76fddc  build/toolchains/android-build-tools-37.0.0-linux-arm64-20260618.tar.xz
+android-arm-build-tools artifact
+target           : linux-arm64
+build-tools tag  : 37.0.0
+aosp branch      : android-17.0.0_r1
+built (UTC)      : 2026-06-18T03:32:50Z
+host             : Linux 6.17.0-1018-azure aarch64
+# 本仓归档
+46422921 802ae68136a919d0ed77e159c40487ad572363ae89ec96e0b1228e36ec2b8203  darwin-arm64/payload/android-sdk/android-sdk-37.0.0-android-36-r2-darwin-arm64.tar.gz.part-000
+47373833 ecc5cd29126334dd35af2604bf94a94387197393c9d92aa10b975c2315e1d5f6  linux-arm64/payload/android-sdk/android-sdk-37.0.0-android-36-r2-linux-arm64.tar.gz.part-000
+46778641 02123b365110d4cd022d67595c0ecfa125a1afb39a82083298f98dce13efe53d  linux-amd64/payload/android-sdk/android-sdk-37.0.0-android-36-r2-linux-amd64.tar.gz.part-000
+# 归档内容
+## darwin-arm64
+drwxr-xr-x  0 0      0           0 Dec 31  1969 android-sdk/
+drwxr-xr-x  0 0      0           0 Dec 31  1969 android-sdk/build-tools/
+drwxr-xr-x  0 0      0           0 Dec 31  1969 android-sdk/build-tools/37.0.0/
+-rw-r--r--  0 0      0     1509714 Dec 31  1969 android-sdk/build-tools/37.0.0/NOTICE.txt
+-rwxr-xr-x  0 0      0     5440544 Dec 31  1969 android-sdk/build-tools/37.0.0/aapt2
+-rwxr-xr-x  0 0      0     3425904 Dec 31  1969 android-sdk/build-tools/37.0.0/aidl
+-rwxr-xr-x  0 0      0        2959 Dec 31  1969 android-sdk/build-tools/37.0.0/apksigner
+-rwxr-xr-x  0 0      0        2678 Dec 31  1969 android-sdk/build-tools/37.0.0/d8
+drwxr-xr-x  0 0      0           0 Dec 31  1969 android-sdk/build-tools/37.0.0/lib/
+-rw-r--r--  0 0      0     1181416 Dec 31  1969 android-sdk/build-tools/37.0.0/lib/apksigner.jar
+-rw-r--r--  0 0      0    20528803 Dec 31  1969 android-sdk/build-tools/37.0.0/lib/d8.jar
+drwxr-xr-x  0 0      0           0 Dec 31  1969 android-sdk/build-tools/37.0.0/lib64/
+-rwxr-xr-x  0 0      0     1319696 Dec 31  1969 android-sdk/build-tools/37.0.0/lib64/libc++.dylib
+-rw-r--r--  0 0      0          17 Dec 31  1969 android-sdk/build-tools/37.0.0/runtime.properties
+-rw-r--r--  0 0      0          38 Dec 31  1969 android-sdk/build-tools/37.0.0/source.properties
+-rwxr-xr-x  0 0      0      276528 Dec 31  1969 android-sdk/build-tools/37.0.0/zipalign
+drwxr-xr-x  0 0      0           0 Dec 31  1969 android-sdk/platforms/
+drwxr-xr-x  0 0      0           0 Dec 31  1969 android-sdk/platforms/android-36/
+-rw-r--r--  0 0      0    27768026 Dec 31  1969 android-sdk/platforms/android-36/android.jar
+drwxr-xr-x  0 0      0           0 Dec 31  1969 android-sdk/platforms/android-36/data/
+-rw-r--r--  0 0      0      766391 Dec 31  1969 android-sdk/platforms/android-36/data/NOTICE.txt
+-rw-r--r--  0 0      0         257 Dec 31  1969 android-sdk/platforms/android-36/source.properties
+## linux-arm64
+drwxr-xr-x  0 0      0           0 Dec 31  1969 android-sdk/
+drwxr-xr-x  0 0      0           0 Dec 31  1969 android-sdk/build-tools/
+drwxr-xr-x  0 0      0           0 Dec 31  1969 android-sdk/build-tools/37.0.0/
+-rw-r--r--  0 0      0         218 Dec 31  1969 android-sdk/build-tools/37.0.0/ARM64-MANIFEST.txt
+-rw-r--r--  0 0      0     1530033 Dec 31  1969 android-sdk/build-tools/37.0.0/NOTICE.txt
+-rwxr-xr-x  0 0      0     8414424 Dec 31  1969 android-sdk/build-tools/37.0.0/aapt2
+-rwxr-xr-x  0 0      0     2853296 Dec 31  1969 android-sdk/build-tools/37.0.0/aidl
+-rwxr-xr-x  0 0      0        2959 Dec 31  1969 android-sdk/build-tools/37.0.0/apksigner
+-rwxr-xr-x  0 0      0        2678 Dec 31  1969 android-sdk/build-tools/37.0.0/d8
+drwxr-xr-x  0 0      0           0 Dec 31  1969 android-sdk/build-tools/37.0.0/lib/
+-rw-r--r--  0 0      0     1181416 Dec 31  1969 android-sdk/build-tools/37.0.0/lib/apksigner.jar
+-rw-r--r--  0 0      0    20528803 Dec 31  1969 android-sdk/build-tools/37.0.0/lib/d8.jar
+-rw-r--r--  0 0      0          17 Dec 31  1969 android-sdk/build-tools/37.0.0/runtime.properties
+-rw-r--r--  0 0      0          38 Dec 31  1969 android-sdk/build-tools/37.0.0/source.properties
+-rwxr-xr-x  0 0      0      251376 Dec 31  1969 android-sdk/build-tools/37.0.0/zipalign
+drwxr-xr-x  0 0      0           0 Dec 31  1969 android-sdk/platforms/
+drwxr-xr-x  0 0      0           0 Dec 31  1969 android-sdk/platforms/android-36/
+-rw-r--r--  0 0      0    27768026 Dec 31  1969 android-sdk/platforms/android-36/android.jar
+drwxr-xr-x  0 0      0           0 Dec 31  1969 android-sdk/platforms/android-36/data/
+-rw-r--r--  0 0      0      766391 Dec 31  1969 android-sdk/platforms/android-36/data/NOTICE.txt
+-rw-r--r--  0 0      0         257 Dec 31  1969 android-sdk/platforms/android-36/source.properties
+## linux-amd64
+drwxr-xr-x  0 0      0           0 Dec 31  1969 android-sdk/
+drwxr-xr-x  0 0      0           0 Dec 31  1969 android-sdk/build-tools/
+drwxr-xr-x  0 0      0           0 Dec 31  1969 android-sdk/build-tools/37.0.0/
+-rw-r--r--  0 0      0     1530033 Dec 31  1969 android-sdk/build-tools/37.0.0/NOTICE.txt
+-rwxr-xr-x  0 0      0     6274200 Dec 31  1969 android-sdk/build-tools/37.0.0/aapt2
+-rwxr-xr-x  0 0      0     3754432 Dec 31  1969 android-sdk/build-tools/37.0.0/aidl
+-rwxr-xr-x  0 0      0        2959 Dec 31  1969 android-sdk/build-tools/37.0.0/apksigner
+-rwxr-xr-x  0 0      0        2678 Dec 31  1969 android-sdk/build-tools/37.0.0/d8
+drwxr-xr-x  0 0      0           0 Dec 31  1969 android-sdk/build-tools/37.0.0/lib/
+-rw-r--r--  0 0      0     1181416 Dec 31  1969 android-sdk/build-tools/37.0.0/lib/apksigner.jar
+-rw-r--r--  0 0      0    20528803 Dec 31  1969 android-sdk/build-tools/37.0.0/lib/d8.jar
+drwxr-xr-x  0 0      0           0 Dec 31  1969 android-sdk/build-tools/37.0.0/lib64/
+-rwxr-xr-x  0 0      0     1545448 Dec 31  1969 android-sdk/build-tools/37.0.0/lib64/libc++.so
+-rw-r--r--  0 0      0          17 Dec 31  1969 android-sdk/build-tools/37.0.0/runtime.properties
+-rw-r--r--  0 0      0          38 Dec 31  1969 android-sdk/build-tools/37.0.0/source.properties
+-rwxr-xr-x  0 0      0      256480 Dec 31  1969 android-sdk/build-tools/37.0.0/zipalign
+drwxr-xr-x  0 0      0           0 Dec 31  1969 android-sdk/platforms/
+drwxr-xr-x  0 0      0           0 Dec 31  1969 android-sdk/platforms/android-36/
+-rw-r--r--  0 0      0    27768026 Dec 31  1969 android-sdk/platforms/android-36/android.jar
+drwxr-xr-x  0 0      0           0 Dec 31  1969 android-sdk/platforms/android-36/data/
+-rw-r--r--  0 0      0      766391 Dec 31  1969 android-sdk/platforms/android-36/data/NOTICE.txt
+-rw-r--r--  0 0      0         257 Dec 31  1969 android-sdk/platforms/android-36/source.properties
+# 原生程序格式
+darwin-arm64/aapt2: Mach-O 64-bit executable arm64
+darwin-arm64/aidl: Mach-O 64-bit executable arm64
+darwin-arm64/zipalign: Mach-O 64-bit executable arm64
+linux-arm64/aapt2: ELF 64-bit LSB pie executable, ARM aarch64, version 1 (GNU/Linux), dynamically linked, int
+linux-arm64/aidl: ELF 64-bit LSB pie executable, ARM aarch64, version 1 (GNU/Linux), dynamically linked, int
+linux-arm64/zipalign: ELF 64-bit LSB pie executable, ARM aarch64, version 1 (GNU/Linux), dynamically linked, int
+linux-amd64/aapt2: ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /
+linux-amd64/aidl: ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /
+linux-amd64/zipalign: ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /

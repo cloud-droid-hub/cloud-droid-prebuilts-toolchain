@@ -1,0 +1,12 @@
+=== RUN   TestCatalog
+    catalog_test.go:13: ready=true archives=7
+--- FAIL: TestCatalog (0.00s)
+FAIL
+FAIL	github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/catalog	0.033s
+=== RUN   TestAndroidSDK
+    androidsdk_test.go:33: Android SDK与JDK归档数=1
+--- FAIL: TestAndroidSDK (0.00s)
+FAIL
+FAIL	github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/tests	0.032s
+FAIL
+exit=1
