@@ -6,7 +6,7 @@ LLVM 22.1.8按本仓消费者裁剪并把非登记别名转换为普通文件后
 
 `aosp15/`提供固定`android-15.0.0_r36`的`bin/aidl`、`bin/hidl-gen`及`lib64/libc++.dylib`。三份原始通用二进制以登记LLVM22的`llvm-lipo -thin arm64`保留arm64部分，归档2317375字节、单卷、九份许可证，无链接。实际安装与AIDL／HIDL生成已验证，完整设备构建另行验收，见[AOSP15记录](../docs/evidence/aosp15-v1/README.md)。
 
-`android-sdk/`提供Build Tools 37.0.0的`aapt2`、`aidl`、`zipalign`、`lib64/libc++.dylib`、`d8`、`apksigner`与两个jar，以及Platform `android-36` r2的`android.jar`；原生程序与运行库以登记LLVM22的`llvm-lipo -thin arm64`从官方`build-tools_r37_macosx.zip`取arm64部分。归档46422921字节、单卷，本机实际安装后用该组件与JDK 21完成AIDL、资源、DEX、对齐、签名与回读，见[Android SDK记录](../docs/evidence/android-sdk-v1/README.md)。
+`sdk37/`提供Build Tools 37.0.0的`aapt2`、`aidl`、`zipalign`、`lib64/libc++.dylib`、`d8`、`apksigner`与两个jar，以及Platform `android-36` r2的`android.jar`与`optional/libbinder_ndk_cpp`头文件；原生程序与运行库以登记LLVM22的`llvm-lipo -thin arm64`从官方`build-tools_r37_macosx.zip`取arm64部分。归档46441963字节、单卷，本机实际安装后用该组件与JDK 21完成AIDL、资源、DEX、对齐、签名与回读，见[Android SDK记录](../docs/evidence/android-sdk-v1/README.md)与[第二版记录](../docs/evidence/android-sdk-v2/README.md)。
 
 归档保留完整`include/`、`share/`和`lib/clang/`，以及`libc++`、`libc++abi`、`libunwind`的静态库、动态库与普通文件别名、`libclang.dylib`与`libclang-cpp.dylib`。仅保留登记的`bin/clang -> clang-22`和`bin/ld.lld -> lld`两项符号链接，其余8569个文件都是普通文件，普通文件总量为2211261752字节。上游许可证与通知均保留，完整LLVM许可证同时放在`share/licenses/LLVM-LICENSE.TXT`。保留的`bin/`程序和别名如下：
 

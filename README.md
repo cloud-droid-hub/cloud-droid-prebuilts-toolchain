@@ -14,7 +14,7 @@ linux-amd64/
 
 三个宿主还提供固定`android-15.0.0_r36`的AIDL与HIDL生成工具，统一安装到`aosp15/`，使调用方可以直接使用登记输入。三份归档合计9673774字节，均为普通文件；来源、许可证、安装与实际代码生成结果见[AOSP15工具记录](docs/evidence/aosp15-v1/README.md)。设备构建器接入单独提交，本次工具发布不能代替完整Codec2或发行验收。
 
-三个宿主还提供裁剪后的Android SDK，安装到`android-sdk/`并保持标准SDK根布局：Build Tools 37.0.0的`aapt2`、`aidl`、`zipalign`、`d8`、`apksigner`及两个jar，Platform `android-36` r2的`android.jar`，以及上游许可证与版本元数据。主项目把`ANDROID_HOME`指向该目录，不再依赖宿主SDK或构建时下载。macOS只保留官方通用程序的arm64部分；Linux amd64保持官方字节；Google不发布Linux arm64原生程序，该宿主的`aapt2`、`aidl`、`zipalign`取已登记的Commit451 `android-arm-build-tools` 37.0.0归档原始字节。来源、摘要与三宿主APK构建验证见[Android SDK记录](docs/evidence/android-sdk-v1/README.md)。
+三个宿主还提供裁剪后的Android SDK，安装到`sdk37/`并保持标准SDK根布局：Build Tools 37.0.0的`aapt2`、`aidl`、`zipalign`、`d8`、`apksigner`及两个jar，Platform `android-36` r2的`android.jar`与`optional/libbinder_ndk_cpp`头文件，以及上游许可证与版本元数据。主项目把`ANDROID_HOME`指向该目录，不再依赖宿主SDK或构建时下载。macOS只保留官方通用程序的arm64部分；Linux amd64保持官方字节；Google不发布Linux arm64原生程序，该宿主的`aapt2`、`aidl`、`zipalign`取已登记的Commit451 `android-arm-build-tools` 37.0.0归档原始字节。来源、摘要与三宿主APK构建验证见[Android SDK记录](docs/evidence/android-sdk-v1/README.md)；0.14.1补入头文件并改用`sdk37/`安装目录的原因与验证见[第二版记录](docs/evidence/android-sdk-v2/README.md)。0.14.0安装留下的`android-sdk/`不再被引用，安装器不会删除它。
 
 ## 安装当前平台
 

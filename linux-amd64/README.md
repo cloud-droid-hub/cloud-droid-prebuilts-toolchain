@@ -6,7 +6,7 @@ LLVM 22归档内的`libedit2`与`libgnutls30t64`固定取自Ubuntu 24.04 LTS，�
 
 `aosp15/`提供固定`android-15.0.0_r36`的原生`bin/aidl`、`bin/hidl-gen`与`lib64/libc++.so`，均保持上游`linux-x86`字节。归档3462954字节、单卷、九份许可证，无链接。NUC的Ubuntu24.04 amd64实际安装及AIDL／HIDL生成通过，未据此声明完整设备构建或发行通过，见[AOSP15记录](../docs/evidence/aosp15-v1/README.md)。
 
-`android-sdk/`提供Build Tools 37.0.0的`aapt2`、`aidl`、`zipalign`、`lib64/libc++.so`、`d8`、`apksigner`与两个jar，以及Platform `android-36` r2的`android.jar`，均保持官方`build-tools_r37_linux.zip`与`platform-36_r02.zip`字节。归档46778641字节、单卷。NUC的Ubuntu24.04 amd64原生实际安装并完成APK构建、签名与回读，M4的linux/amd64仿真容器同样通过，见[Android SDK记录](../docs/evidence/android-sdk-v1/README.md)。
+`sdk37/`提供Build Tools 37.0.0的`aapt2`、`aidl`、`zipalign`、`lib64/libc++.so`、`d8`、`apksigner`与两个jar，以及Platform `android-36` r2的`android.jar`与`optional/libbinder_ndk_cpp`头文件，均保持官方`build-tools_r37_linux.zip`与`platform-36_r02.zip`字节。归档46797668字节、单卷。NUC的Ubuntu24.04 amd64原生实际安装并完成APK构建、签名与回读，见[Android SDK记录](../docs/evidence/android-sdk-v1/README.md)与[第二版记录](../docs/evidence/android-sdk-v2/README.md)。
 
 在仓库根执行：
 

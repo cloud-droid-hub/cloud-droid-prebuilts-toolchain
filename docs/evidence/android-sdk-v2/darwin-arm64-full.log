@@ -1,0 +1,4 @@
+ok  	github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/cmd/cdh-toolchain	0.971s
+ok  	github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/catalog	1.187s
+ok  	github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/install	6.132s
+exit=0 seconds=7

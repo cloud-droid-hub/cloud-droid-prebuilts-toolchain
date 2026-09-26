@@ -2,15 +2,16 @@
 package catalog
 
 // androidSDK发布裁剪后的Android SDK Build Tools 37.0.0与Platform android-36 r2，
-// 目录保持标准SDK根布局；原生程序只保留官方通用程序的arm64部分。
+// 目录保持标准SDK根布局；原生程序只保留官方通用程序的arm64部分。Platform另保留
+// optional/libbinder_ndk_cpp头文件，供设备仓HAL构建按SDK布局取用。
 func androidSDK() Archive {
 	return Archive{
-		Name: "Android SDK", Version: "37.0.0", Dir: "android-sdk",
+		Name: "Android SDK", Version: "37.0.0", Dir: "sdk37",
 		Format: TarGzip, Prefix: "android-sdk",
-		SHA256: "802ae68136a919d0ed77e159c40487ad572363ae89ec96e0b1228e36ec2b8203",
+		SHA256: "74932274c545806ece4633e68d1b589b011ce9da29b7eab844acb7f318930d1b",
 		Parts: []Part{{
-			Path: "payload/android-sdk/android-sdk-37.0.0-android-36-r2-darwin-arm64.tar.gz.part-000",
-			Size: 46422921, SHA256: "802ae68136a919d0ed77e159c40487ad572363ae89ec96e0b1228e36ec2b8203",
+			Path: "payload/sdk37/android-sdk-37.0.0-android-36-r2-darwin-arm64.tar.gz.part-000",
+			Size: 46441963, SHA256: "74932274c545806ece4633e68d1b589b011ce9da29b7eab844acb7f318930d1b",
 		}},
 		Files: []FileCheck{{
 			Path: "build-tools/37.0.0/source.properties", Size: 38,
@@ -47,6 +48,14 @@ func androidSDK() Archive {
 		}, {
 			Path: "platforms/android-36/android.jar", Size: 27768026,
 			SHA256: "d9eb9da824d9e247a352f570f01e1169e725b2954bca9e283a71786c59b59f9a",
+		}, {
+			Path: "platforms/android-36/optional/libbinder_ndk_cpp/android/binder_interface_utils.h", Size: 13955,
+			SHA256: "9898e1d9b7e35072cc411a4ef419d1fa2d498b356e1c45943b23381497b8e8e3",
+			Want:   []string{"asBinderReference"},
+		}, {
+			Path: "platforms/android-36/optional/libbinder_ndk_cpp/android/binder_auto_utils.h", Size: 13362,
+			SHA256: "8de4018f17330e3cb68eacd66ef2f10da19ae22b2da0e7f6f6ad4d100607a5f4",
+			Want:   []string{"class SpAIBinder"},
 		}},
 		Probes: []Probe{{
 			Path: "build-tools/37.0.0/aapt2", Args: []string{"version"},

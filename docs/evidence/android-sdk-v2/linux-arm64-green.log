@@ -1,0 +1,15 @@
+aarch64
+vet-ok
+ok  	github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/cmd/cdh-toolchain	0.080s
+ok  	github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/catalog	0.003s
+ok  	github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/install	0.657s
+ok  	github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/selectcfg	0.002s
+=== RUN   TestCatalog
+--- PASS: TestCatalog (0.00s)
+PASS
+ok  	github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/catalog	0.002s
+=== RUN   TestAndroidSDK
+--- PASS: TestAndroidSDK (4.39s)
+PASS
+ok  	github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/tests	4.392s
+exit=0 seconds=7
