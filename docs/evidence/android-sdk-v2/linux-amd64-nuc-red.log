@@ -1,8 +1,0 @@
-x86_64
-=== RUN   TestAndroidSDK
-    androidsdk_test.go:46: install Android SDK: invalid identity file for Android SDK: open relative path platforms/android-36/optional/libbinder_ndk_cpp/android/binder_interface_utils.h: no such file or directory
---- FAIL: TestAndroidSDK (1.96s)
-FAIL
-FAIL	github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/tests	1.965s
-FAIL
-exit=1

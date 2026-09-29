@@ -1,9 +1,0 @@
-=== RUN   TestCatalog
---- PASS: TestCatalog (0.00s)
-PASS
-ok  	github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/catalog	0.303s
-=== RUN   TestAndroidSDK
---- PASS: TestAndroidSDK (9.08s)
-PASS
-ok  	github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/tests	9.683s
-exit=0 seconds=10

@@ -1,4 +1,0 @@
-=== RUN   TestAOSP15Arc
-    aosp15_test.go:37: destination directory is not secure: 001
---- FAIL: TestAOSP15Arc (0.00s)
-FAIL

@@ -1,6 +1,0 @@
-=== RUN   TestAOSP15Arc
-    aosp15_test.go:56: AIDL generation: exit status 1
-        ERROR: /Users/apple/Documents/cloud-droid-hub/tools/toolchains/prebuilts/build/test-tmp/TestAOSP15Arc4293284767/002/sample/tools/Value.aidl:1.33-39: directory /Users/apple/Documents/cloud-droid-hub/tools/toolchains/prebuilts/build/test-tmp/TestAOSP15Arc4293284767/002/ is not found in any of the import paths:
-         - 
---- FAIL: TestAOSP15Arc (0.88s)
-FAIL
