@@ -4,9 +4,9 @@
 
 NDK不包含Google发布的Linux amd64宿主程序。Android arm64编译使用同目录LLVM 22、NDK sysroot和Clang 21 resource目录，不得把NDK根交给要求`ndk-build`的旧入口。
 
-`aosp15/`提供固定`android-15.0.0_r36`的原生`bin/aidl`、`bin/hidl-gen`、`lib64/libc++.so`与`lib64/libc_musl.so`，均保持上游`linux_musl-arm64`字节。归档3893445字节、单卷、九份许可证，无链接。Ubuntu26.04 arm64原生容器的实际安装及AIDL／HIDL生成通过，未在开发板执行完整设备构建，见[AOSP15记录](https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/issues/7#issuecomment-5882856140)。
+`aosp15/`提供固定`android-15.0.0_r36`的原生`bin/aidl`、`bin/hidl-gen`、`lib64/libc++.so`与`lib64/libc_musl.so`，均保持上游`linux_musl-arm64`字节。归档3893445字节、单卷、九份许可证，无链接。Ubuntu26.04 arm64原生容器的实际安装及AIDL／HIDL生成通过，未在开发板执行完整设备构建，见[AOSP15记录](https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/issues/10)。
 
-`sdk37/`提供Build Tools 37.0.0与Platform `android-36` r2的裁剪内容。Google不发布Linux arm64原生程序，`aapt2`、`aidl`、`zipalign`取已登记的Commit451 `android-arm-build-tools` 37.0.0归档原始字节（由`android-17.0.0_r1`源码构建，依赖宿主glibc、`libstdc++.so.6`与`libz.so.1`）；`d8`、`apksigner`、两个jar、`android.jar`与`optional/libbinder_ndk_cpp`头文件取官方归档。归档47392895字节、单卷。Ubuntu26.04 arm64原生容器实际安装并完成APK构建、签名与回读，见[Android SDK记录](https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/issues/7#issuecomment-5882852859)与[第二版记录](https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/issues/7#issuecomment-5882854618)。
+`sdk37/`提供Build Tools 37.0.0与Platform `android-36` r2的裁剪内容。Google不发布Linux arm64原生程序，`aapt2`、`aidl`、`zipalign`取已登记的Commit451 `android-arm-build-tools` 37.0.0归档原始字节（由`android-17.0.0_r1`源码构建，依赖宿主glibc、`libstdc++.so.6`与`libz.so.1`）；`d8`、`apksigner`、两个jar、`android.jar`与`optional/libbinder_ndk_cpp`头文件取官方归档。归档47392895字节、单卷。Ubuntu26.04 arm64原生容器实际安装并完成APK构建、签名与回读，见[Android SDK记录](https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/issues/8)与[第二版记录](https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/issues/9)。
 
 在仓库根执行：
 

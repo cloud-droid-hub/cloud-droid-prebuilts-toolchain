@@ -12,11 +12,11 @@ linux-amd64/
 
 归档以不超过90 MiB的普通Git对象保存，不使用Git LFS。`<host>/bin/cdh-toolchain`负责摘要校验、安全展开、宿主架构检查和逐组件原子发布。主项目把本仓放在`tools/toolchains/prebuilts/`，再把当前宿主工具展开到`output/toolchains/<host>/`；缺失、版本错误或架构不符都会直接失败，不会改用系统工具。
 
-三个宿主还提供固定`android-15.0.0_r36`的AIDL与HIDL生成工具，统一安装到`aosp15/`，使调用方可以直接使用登记输入。三份归档合计9673774字节，均为普通文件；来源、许可证、安装与实际代码生成结果见[AOSP15工具记录](https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/issues/7#issuecomment-5882856140)。设备构建器接入单独提交，本次工具发布不能代替完整Codec2或发行验收。
+三个宿主还提供固定`android-15.0.0_r36`的AIDL与HIDL生成工具，统一安装到`aosp15/`，使调用方可以直接使用登记输入。三份归档合计9673774字节，均为普通文件；来源、许可证、安装与实际代码生成结果见[AOSP15工具记录](https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/issues/10)。设备构建器接入单独提交，本次工具发布不能代替完整Codec2或发行验收。
 
-三个宿主还提供裁剪后的Android SDK，安装到`sdk37/`并保持标准SDK根布局：Build Tools 37.0.0的`aapt2`、`aidl`、`zipalign`、`d8`、`apksigner`及两个jar，Platform `android-36` r2的`android.jar`与`optional/libbinder_ndk_cpp`头文件，以及上游许可证与版本元数据。主项目把`ANDROID_HOME`指向该目录，不再依赖宿主SDK或构建时下载。macOS只保留官方通用程序的arm64部分；Linux amd64保持官方字节；Google不发布Linux arm64原生程序，该宿主的`aapt2`、`aidl`、`zipalign`取已登记的Commit451 `android-arm-build-tools` 37.0.0归档原始字节。来源、摘要与三宿主APK构建验证见[Android SDK记录](https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/issues/7#issuecomment-5882852859)；0.14.1补入头文件并改用`sdk37/`安装目录的原因与验证见[第二版记录](https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/issues/7#issuecomment-5882854618)。0.14.0安装留下的`android-sdk/`不再被引用，安装器不会删除它。
+三个宿主还提供裁剪后的Android SDK，安装到`sdk37/`并保持标准SDK根布局：Build Tools 37.0.0的`aapt2`、`aidl`、`zipalign`、`d8`、`apksigner`及两个jar，Platform `android-36` r2的`android.jar`与`optional/libbinder_ndk_cpp`头文件，以及上游许可证与版本元数据。主项目把`ANDROID_HOME`指向该目录，不再依赖宿主SDK或构建时下载。macOS只保留官方通用程序的arm64部分；Linux amd64保持官方字节；Google不发布Linux arm64原生程序，该宿主的`aapt2`、`aidl`、`zipalign`取已登记的Commit451 `android-arm-build-tools` 37.0.0归档原始字节。来源、摘要与三宿主APK构建验证见[Android SDK记录](https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/issues/8)；0.14.1补入头文件并改用`sdk37/`安装目录的原因与验证见[第二版记录](https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/issues/9)。0.14.0安装留下的`android-sdk/`不再被引用，安装器不会删除它。
 
-按维护者2026-09-28的决定，本仓证据不再存入仓库：原`docs/evidence/`下的三份记录已迁到[#7](https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/issues/7)的评论并从仓库删除，以后的日志与命令输出以评论保存在归属Issue。
+本仓证据不存入仓库：每个Step的日志、截图与命令输出作为附件上传到本仓单独的Step Issue，全部Step Issue在索引单[#7](https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/issues/7)中列出。
 
 ## 安装当前平台
 
