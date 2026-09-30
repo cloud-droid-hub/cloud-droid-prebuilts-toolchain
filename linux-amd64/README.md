@@ -8,6 +8,8 @@ LLVM 22归档内的`libedit2`与`libgnutls30t64`固定取自Ubuntu 24.04 LTS，�
 
 `sdk37/`提供Build Tools 37.0.0的`aapt2`、`aidl`、`zipalign`、`lib64/libc++.so`、`d8`、`apksigner`与两个jar，以及Platform `android-36` r2的`android.jar`与`optional/libbinder_ndk_cpp`头文件，均保持官方`build-tools_r37_linux.zip`与`platform-36_r02.zip`字节。归档46797668字节、单卷。NUC的Ubuntu24.04 amd64原生实际安装并完成APK构建、签名与回读，见[Android SDK记录](https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/issues/8)与[第二版记录](https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/issues/9)。
 
+`sdkapp37/`提供主项目源码App构建用的Build Tools 34.0.0、35.0.0、35.0.1、36.0.0、37.0.0，Platform `android-34` r3、`android-35` r2、`android-36` r2、`android-37.0` r2，CMake 3.22.1与4.1.2，原生程序保持官方Linux x86-64字节；Build Tools、`platforms/android-37.0`与两个CMake按官方仓库XML条目补齐`package.xml`。归档240217221字节、3卷；登记时没有本宿主机器，只复算了归档内身份文件摘要并确认全部ELF为x86-64，实际安装与探针未验证，见[sdkapp37-v1记录](https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/issues/11)。
+
 在仓库根执行：
 
 ```sh

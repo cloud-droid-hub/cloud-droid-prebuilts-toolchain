@@ -22,6 +22,7 @@
 - Bazel固定为`8.5.1`，三个宿主目录都从本仓归档安装对应原生程序，构建时不得在线下载或改用系统Bazel。
 - AOSP15接口生成工具固定为`android-15.0.0_r36`的AIDL与HIDL，统一安装到`aosp15/`。macOS仅保留原始通用程序的arm64部分，Linux沿用对应宿主原始字节；运行库、来源元数据和许可证随包发布。
 - Android SDK固定为Build Tools 37.0.0与Platform `android-36` r2，统一安装到`sdk37/`并保持标准SDK根布局，只保留`aapt2`、`aidl`、`zipalign`、`d8`、`apksigner`、两个jar、`android.jar`、`optional/libbinder_ndk_cpp`头文件、运行库、版本元数据与许可证。组件内容变化时改用新的安装目录名，不原地替换已安装目录。macOS仅保留官方通用程序的arm64部分，Linux amd64沿用官方字节；Linux arm64原生程序取已登记的Commit451 `android-arm-build-tools` 37.0.0归档原始字节，其余文件取官方Linux归档。
+- 主项目源码App构建用的Android SDK安装到`sdkapp37/`并保持标准SDK根布局，归档为`payload/sdkapp37/android-sdk-apps-37.0.0-<宿主>.tar.gz`分片。macOS arm64与Linux amd64包含Build Tools 34.0.0、35.0.0、35.0.1、36.0.0、37.0.0，Platform `android-34` r3、`android-35` r2、`android-36` r2、`android-37.0` r2，CMake 3.22.1与4.1.2；Linux arm64只含Build Tools 37.0.0与上述Platform，其它Build Tools版本与CMake没有登记的arm64来源。内容只取Google仓库XML登记的官方zip，Linux arm64原生程序取已登记的Commit451 37.0.0原始字节；macOS只保留arm64部分，Linux amd64保持官方字节；官方zip缺少`package.xml`的包按官方仓库XML条目补齐。不含NDK，由主项目在构建时把登记`ndk29/`放进每次新建的SDK视图。
 - Rust、Cargo与Rustdoc固定为`1.97.1`，Rustc内部LLVM固定为`22.1.6`，三个宿主目录都包含`aarch64-linux-android`标准库。构建时必须从本仓`rust197/`安装，不得调用rustup联网安装、改用系统Rust或静默回退。
 
 三个宿主的安装程序和NDK输入分别遵守以下限制；从仓库根调用安装程序时，`--repo`必须指向对应的宿主目录。

@@ -16,6 +16,8 @@ linux-amd64/
 
 三个宿主还提供裁剪后的Android SDK，安装到`sdk37/`并保持标准SDK根布局：Build Tools 37.0.0的`aapt2`、`aidl`、`zipalign`、`d8`、`apksigner`及两个jar，Platform `android-36` r2的`android.jar`与`optional/libbinder_ndk_cpp`头文件，以及上游许可证与版本元数据。主项目把`ANDROID_HOME`指向该目录，不再依赖宿主SDK或构建时下载。macOS只保留官方通用程序的arm64部分；Linux amd64保持官方字节；Google不发布Linux arm64原生程序，该宿主的`aapt2`、`aidl`、`zipalign`取已登记的Commit451 `android-arm-build-tools` 37.0.0归档原始字节。来源、摘要与三宿主APK构建验证见[Android SDK记录](https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/issues/8)；0.14.1补入头文件并改用`sdk37/`安装目录的原因与验证见[第二版记录](https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/issues/9)。0.14.0安装留下的`android-sdk/`不再被引用，安装器不会删除它。
 
+三个宿主另提供主项目源码App构建用的`sdkapp37/`，同样保持标准SDK根布局：macOS arm64与Linux amd64含Build Tools 34.0.0、35.0.0、35.0.1、36.0.0、37.0.0，Platform `android-34` r3、`android-35` r2、`android-36` r2、`android-37.0` r2，CMake 3.22.1与4.1.2；Linux arm64只含Build Tools 37.0.0与这些Platform，原生程序与`sdk37`一样取Commit451原始字节，其它Build Tools版本与CMake没有登记的arm64来源。内容取自Google仓库XML登记的官方zip，macOS只保留arm64部分，不含NDK。主项目只在macOS arm64构建源码App。来源摘要、逐轮补齐过程、裁剪范围与三宿主核验见[sdkapp37-v1记录](https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/issues/11)。
+
 本仓证据不存入仓库：每个Step的日志、截图与命令输出作为附件上传到本仓单独的Step Issue，全部Step Issue在索引单[#7](https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/issues/7)中列出。
 
 ## 安装当前平台
