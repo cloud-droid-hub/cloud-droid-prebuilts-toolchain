@@ -1,5 +1,13 @@
 # cloud-droid-prebuilts-toolchain
 
+三个宿主提供CPython`3.14.8`，安装到`python314/`。输入固定为Astral`python-build-standalone`的`20261009`完整`pgo+lto`归档；主仓`tools/toolchains/python-trim/`按`python314-build-v1`生成裁剪包，移除构建对象、libpython静态副本、测试、字节码缓存和手册，保留运行库、标准库、pip、ensurepip、venv、头文件与完整上游许可证。安装器分别核对原生架构、版本、裁剪标记与关键模块实际导入，调用方不改用系统Python。
+
+| 宿主 | 裁剪tar.gz大小 | SHA256 |
+| --- | --- | --- |
+| darwin-arm64 | 27243497 | `3a417e4a2ca1ce63b2e3dcfa142a1febf13d394e2c29c5d96f9b8a9fa1758ac4` |
+| linux-arm64 | 58800714 | `ce3f118977c3b8b0299b55ed24182c4f68d262825ce638eed7ffdb57ffa7115b` |
+| linux-amd64 | 76519762 | `7605cd4099a4dc2dc51cb605d26a12f98c11fa0764b1e6c8122155bd9babab91` |
+
 本私有仓库为`cloud-droid-hub`提供本地与Docker构建所需的固定宿主原生工具链。仓库只维护`main`分支，三个原平台分支的内容和历史分别归入以下顶层目录：
 
 ```text

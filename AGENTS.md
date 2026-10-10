@@ -13,6 +13,7 @@
 
 ## 固定工具链
 
+- Python固定为CPython`3.14.8`，取Astral`python-build-standalone`的`20261009`完整`pgo+lto`归档，三个宿主均安装到`python314/`。主仓`tools/toolchains/python-trim/`从固定摘要输入生成`python314-build-v1`归档，只移除构建对象、libpython静态副本、测试、字节码缓存和手册；解释器、运行库、标准库、pip、ensurepip、venv、头文件与完整上游许可证保持。缺失、版本或架构不符时明确失败。
 - Go固定为`1.26.8`，同时保留主项目使用Go 1.27.x验证源码兼容性的能力。
 - LLVM 22在macOS使用`22.1.8`，Linux使用Ubuntu 26.04的`22.1.2`。Clang与LLD必须来自同一个LLVM目录。
 - 三个宿主目录都不再发布LLVM 19；宿主与Android目标构建统一使用本仓裁剪后的LLVM 22目录，需要旧版本时从Git历史取回，不在本仓重新登记。
