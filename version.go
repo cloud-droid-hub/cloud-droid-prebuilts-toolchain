@@ -3,4 +3,4 @@
 package version
 
 // Value是三个宿主共用的仓库版本。
-const Value = "0.16.0"
+const Value = "0.17.0"

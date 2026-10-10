@@ -80,7 +80,7 @@ func runSelect(ctx context.Context, args []string, stdout, stderr io.Writer, spe
 }
 
 func runInstall(ctx context.Context, args []string, stdout, stderr io.Writer, spec catalog.Spec) int {
-	repo, dest, ok := parseArgs("install", args, stderr)
+	repo, dest, spec, ok := parseArgs("install", args, stderr, spec)
 	if !ok {
 		return 2
 	}
@@ -93,7 +93,7 @@ func runInstall(ctx context.Context, args []string, stdout, stderr io.Writer, sp
 }
 
 func runCheck(ctx context.Context, args []string, stdout, stderr io.Writer, spec catalog.Spec) int {
-	_, dest, ok := parseArgs("check", args, stderr)
+	_, dest, spec, ok := parseArgs("check", args, stderr, spec)
 	if !ok {
 		return 2
 	}
@@ -105,21 +105,36 @@ func runCheck(ctx context.Context, args []string, stdout, stderr io.Writer, spec
 	return 0
 }
 
-func parseArgs(name string, args []string, stderr io.Writer) (string, string, bool) {
+func parseArgs(name string, args []string, stderr io.Writer, spec catalog.Spec) (string, string, catalog.Spec, bool) {
 	flags := flag.NewFlagSet(name, flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	repo := flags.String("repo", ".", "repository root")
 	dest := flags.String("dest", "", "installation root")
+	component := flags.String("component", "", "只处理指定安装目录的组件")
 	if err := flags.Parse(args); err != nil {
-		return "", "", false
+		return "", "", spec, false
 	}
 	if flags.NArg() != 0 || *dest == "" {
 		fmt.Fprintln(stderr, "--dest is required and positional arguments are not accepted")
-		return "", "", false
+		return "", "", spec, false
 	}
-	return *repo, *dest, true
+	if *component != "" {
+		found := false
+		for _, arc := range spec.Archives {
+			if arc.Dir == *component {
+				spec.Archives = []catalog.Archive{arc}
+				found = true
+				break
+			}
+		}
+		if !found {
+			fmt.Fprintf(stderr, "unknown component: %s\n", *component)
+			return "", "", spec, false
+		}
+	}
+	return *repo, *dest, spec, true
 }
 
 func usage(output io.Writer) {
-	fmt.Fprintln(output, "usage: cdh-toolchain <install|check|select> --repo DIR --dest DIR [--name NAME]")
+	fmt.Fprintln(output, "usage: cdh-toolchain <install|check|select> --repo DIR --dest DIR [--name NAME] [--component DIR]")
 }

@@ -9,7 +9,7 @@ func TestCatalog(t *testing.T) {
 	if spec.Host != "linux-arm64" {
 		t.Fatalf("host=%q", spec.Host)
 	}
-	if !spec.Ready || len(spec.Archives) != 9 {
+	if !spec.Ready || len(spec.Archives) != 11 {
 		t.Fatalf("ready=%v archives=%d", spec.Ready, len(spec.Archives))
 	}
 	archive := spec.Archives[0]

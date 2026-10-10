@@ -24,6 +24,21 @@ linux-amd64/
 
 ## 安装当前平台
 
+Bash统一安装到`bash53/`，版本为`5.3.15(1)-release`。三个程序取自[feicong/bash-static](https://github.com/feicong/bash-static)：macOS arm64与Linux arm64来自[成功构建35507495813](https://github.com/feicong/bash-static/actions/runs/35507495813)，Linux amd64来自[成功构建35507468329](https://github.com/feicong/bash-static/actions/runs/35507468329)，保留原始程序字节。Linux程序为静态ELF，macOS程序为arm64 Mach-O并依赖系统`libncurses.5.4`、`libiconv.2`、CoreFoundation与libSystem；不能把macOS程序称为静态链接。三个包包含GNU GPLv3，Linux包还包含musl许可证。归档合计1647101字节，各宿主一卷，完整摘要、程序摘要与版本探针由`internal/catalog/bash.go`登记。
+
+主项目的`tools/toolchains/bash.sh`用POSIX入口调用本仓安装器，只展开Bash后才执行脚本体。单独安装与检查Bash使用：
+
+```sh
+host=darwin-arm64
+repo="$PWD/$host"
+dest="$PWD/output/$host"
+"$repo/bin/cdh-toolchain" install --repo "$repo" --dest "$dest" --component bash53
+"$repo/bin/cdh-toolchain" check --dest "$dest" --component bash53
+"$dest/bash53/bin/bash" --version
+```
+
+`--component`取类型化目录中的安装目录名，未知名称返回退出码2；省略时仍处理全部工具链。Bash冷启动不依赖其它组件已经安装，也不要求完整源码包存在Git元数据。普通源码包须包含对应宿主的安装器与Bash分片。
+
 从仓库根目录指定宿主目录：
 
 ```sh

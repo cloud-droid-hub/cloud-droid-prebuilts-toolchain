@@ -1,5 +1,7 @@
 # Linux arm64工具链
 
+`bash53/`提供GNU Bash `5.3.15(1)-release`，保留`feicong/bash-static`的原始静态AArch64 ELF字节、GNU GPLv3和musl许可证，不依赖宿主动态链接器。归档551787字节、单卷。安装器支持`install`与`check`加`--component bash53`单独处理Bash，版本、架构和原始程序摘要由`internal/catalog/bash.go`核验。
+
 本目录由仓库唯一`main`分支维护，发布Linux arm64使用的Go 1.26.8、Temurin JDK 21.0.12.1+1、Ubuntu 26.04 LLVM 22.1.2、Android NDK r29目标输入、Bazel 8.5.1和Rust/Cargo 1.97.1。Rust内部LLVM为22.1.6，并包含`aarch64-linux-android`标准库。
 
 JDK的`jdk21-build-v1`包为75957224字节、1卷，安装目录为`jdk21trim1/`。完整上游包为205641175字节；保留完整运行模块与构建程序，移除`jmods/`、`man/`和`lib/src.zip`，保留JNI头文件及全部许可证。主仓`tools/toolchains/jdk-trim/`负责固定输入、自动裁剪和字节重放核验。制品在macOSarm64生成和核验，本轮未在Linuxarm64执行。
@@ -24,6 +26,7 @@ dest="$PWD/output/linux-arm64"
 "$repo/bin/cdh-toolchain" select --dest "$dest" --name ndk-sysroot
 "$repo/bin/cdh-toolchain" select --dest "$dest" --name ndk-resource
 "$dest/go126/bin/go" version
+"$dest/bash53/bin/bash" --version
 "$dest/jdk21trim1/bin/java" -version
 "$dest/llvm22/bin/clang" --version
 "$dest/bazel851/bin/bazel" --version
