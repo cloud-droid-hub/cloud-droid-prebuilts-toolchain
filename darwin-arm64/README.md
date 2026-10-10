@@ -2,6 +2,8 @@
 
 本目录由仓库唯一`main`分支维护，发布macOS arm64使用的Go 1.26.8、Temurin JDK 21.0.12.1+1、LLVM 22.1.8、裁剪后的Android NDK r29 revision 29.0.14206865、Bazel 8.5.1和Rust/Cargo 1.97.1。Rust内部LLVM为22.1.6，并包含`aarch64-linux-android`标准库。
 
+JDK的`jdk21-build-v1`包为72392094字节、1卷，安装目录为`jdk21trim1/`。完整上游包为200073404字节；保留完整运行模块与构建程序，移除`jmods/`、`man/`和`lib/src.zip`，保留JNI头文件及全部许可证。主仓`tools/toolchains/jdk-trim/`负责固定输入、自动裁剪和字节重放核验。
+
 LLVM 22.1.8按本仓消费者裁剪并把非登记别名转换为普通文件后，为351706968字节、4卷；原归档为1479903744字节、16卷，压缩量减少76.2%。此前保留20个符号链接的裁剪包为195159848字节、3卷；本次把其中18个别名改为独立普通文件，压缩量增加156547120字节。版本、宿主架构和保留文件的原始字节不变。新归档名为`LLVM-22.1.8-macOS-ARM64-cdh.tar.xz`，包内根目录仍为`LLVM-22.1.8-macOS-ARM64`；完整SHA-256与每卷大小、摘要由`internal/catalog/catalog.go`登记。
 
 `aosp15/`提供固定`android-15.0.0_r36`的`bin/aidl`、`bin/hidl-gen`及`lib64/libc++.dylib`。三份原始通用二进制以登记LLVM22的`llvm-lipo -thin arm64`保留arm64部分，归档2317375字节、单卷、九份许可证，无链接。实际安装与AIDL／HIDL生成已验证，完整设备构建另行验收，见[AOSP15记录](https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/issues/10)。
@@ -32,7 +34,7 @@ dest="$PWD/output/darwin-arm64"
 "$repo/bin/cdh-toolchain" install --repo "$repo" --dest "$dest"
 "$repo/bin/cdh-toolchain" check --dest "$dest"
 "$dest/go126/bin/go" version
-"$dest/jdk21/bin/java" -version
+"$dest/jdk21trim1/bin/java" -version
 "$dest/llvm22/bin/clang" --version
 "$dest/llvm22/bin/ld64.lld" --version
 "$dest/ndk29/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang" --version

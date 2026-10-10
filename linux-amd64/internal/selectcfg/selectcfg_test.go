@@ -15,7 +15,7 @@ func TestResolve(t *testing.T) {
 		Ready: true,
 		Archives: []catalog.Archive{
 			{Name: "Go", Dir: "go126"},
-			{Name: "JDK", Dir: "jdk21"},
+			{Name: "JDK", Dir: "jdk21trim1"},
 			{Name: "LLVM 22", Dir: "llvm22"},
 			{Name: "Android NDK", Dir: "ndk29"},
 		},
@@ -26,7 +26,7 @@ func TestResolve(t *testing.T) {
 		want string
 	}{
 		{name: "go", want: filepath.Join(root, "go126")},
-		{name: "jdk", want: filepath.Join(root, "jdk21")},
+		{name: "jdk", want: filepath.Join(root, "jdk21trim1")},
 		{name: "llvm22", want: filepath.Join(root, "llvm22")},
 		{name: "llvm22-clang", want: filepath.Join(root, "llvm22", "bin", "clang")},
 		{name: "llvm22-clang++", want: filepath.Join(root, "llvm22", "bin", "clang++")},

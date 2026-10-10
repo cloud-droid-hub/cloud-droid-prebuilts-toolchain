@@ -98,34 +98,7 @@ func Current() Spec {
 				Machine: ELFAMD64,
 				Env:     []string{"GOTOOLCHAIN=local"},
 			}},
-		}, {
-			Name:    "JDK",
-			Version: "21.0.12.1+1",
-			Dir:     "jdk21",
-			Format:  TarGzip,
-			SHA256:  "ce79869e1307ed8ee1e2baa86a412b1eb5b75d10a01006d788a6f968bcfaee94",
-			Prefix:  "jdk-21.0.12.1+1",
-			Parts: []Part{{
-				Path:   "payload/jdk21/OpenJDK21U-jdk_x64_linux_hotspot_21.0.12.1_1.tar.gz.part-000",
-				Size:   94371840,
-				SHA256: "d8d656393d2dfa954d1b51c1adc06992188d86844938e1f8c4e0cb3f86651d02",
-			}, {
-				Path:   "payload/jdk21/OpenJDK21U-jdk_x64_linux_hotspot_21.0.12.1_1.tar.gz.part-001",
-				Size:   94371840,
-				SHA256: "bca36783436430adaf476951c076ff15c4a46bc64928602cb778326686ae5f26",
-			}, {
-				Path:   "payload/jdk21/OpenJDK21U-jdk_x64_linux_hotspot_21.0.12.1_1.tar.gz.part-002",
-				Size:   18729667,
-				SHA256: "d3b1a4a52a710a01dceb06b30248b241884e010e1ed95b7aa68542c49c0039ef",
-			}},
-			Probes: []Probe{{
-				Path:    "bin/java",
-				Args:    []string{"-version"},
-				Want:    []string{"Temurin-21.0.12.1+1"},
-				Env:     []string{"JAVA_TOOL_OPTIONS=", "_JAVA_OPTIONS=", "JDK_JAVA_OPTIONS="},
-				Machine: ELFAMD64,
-			}},
-		}, {
+		}, jdkArchive(), {
 			Name:    "LLVM 22",
 			Version: "22.1.2",
 			Dir:     "llvm22",

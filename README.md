@@ -12,6 +12,8 @@ linux-amd64/
 
 归档以不超过90 MiB的普通Git对象保存，不使用Git LFS。`<host>/bin/cdh-toolchain`负责摘要校验、安全展开、宿主架构检查和逐组件原子发布。主项目把本仓放在`tools/toolchains/prebuilts/`，再把当前宿主工具展开到`output/toolchains/<host>/`；缺失、版本错误或架构不符都会直接失败，不会改用系统工具。
 
+三个宿主的Temurin JDK使用`jdk21-build-v1`裁剪构建配置，安装到`jdk21trim1/`。保留完整运行模块、全部原版程序、`ct.sym`、JNI头文件、配置与许可证，移除`jmods/`、`man/`和`lib/src.zip`；需要通过`jlink`生成其它模块镜像时，显式从完整上游包提供`--module-path`。三个压缩包合计225043301字节，相比完整上游包的613187926字节减少63.3%，各宿主只需一卷。裁剪由主仓`tools/toolchains/jdk-trim/`的类型化策略自动执行，输入绑定固定上游SHA-256，输出排序、权限、属主与时间戳规范化；`pack`生成归档、90MiB分片及动态报告，`verify`从同一输入重新计算完整输出，核对归档、分片和报告。具体命令见主仓工具目录的`README.md`；类型化目录同时核验裁剪标记和`java`、`javac`、`jar`、`keytool`身份，旧的`jdk21/`目录不会被覆盖或复用。
+
 三个宿主还提供固定`android-15.0.0_r36`的AIDL与HIDL生成工具，统一安装到`aosp15/`，使调用方可以直接使用登记输入。三份归档合计9673774字节，均为普通文件；来源、许可证、安装与实际代码生成结果见[AOSP15工具记录](https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/issues/10)。设备构建器接入单独提交，本次工具发布不能代替完整Codec2或发行验收。
 
 三个宿主还提供裁剪后的Android SDK，安装到`sdk37/`并保持标准SDK根布局：Build Tools 37.0.0的`aapt2`、`aidl`、`zipalign`、`d8`、`apksigner`及两个jar，Platform `android-36` r2的`android.jar`与`optional/libbinder_ndk_cpp`头文件，以及上游许可证与版本元数据。主项目把`ANDROID_HOME`指向该目录，不再依赖宿主SDK或构建时下载。macOS只保留官方通用程序的arm64部分；Linux amd64保持官方字节；Google不发布Linux arm64原生程序，该宿主的`aapt2`、`aidl`、`zipalign`取已登记的Commit451 `android-arm-build-tools` 37.0.0归档原始字节。来源、摘要与三宿主APK构建验证见[Android SDK记录](https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/issues/8)；0.14.1补入头文件并改用`sdk37/`安装目录的原因与验证见[第二版记录](https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/issues/9)。0.14.0安装留下的`android-sdk/`不再被引用，安装器不会删除它。

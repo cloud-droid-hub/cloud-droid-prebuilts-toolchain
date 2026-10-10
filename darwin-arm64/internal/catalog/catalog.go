@@ -98,34 +98,7 @@ func Current() Spec {
 				Machine: MachARM64,
 				Env:     []string{"GOTOOLCHAIN=local"},
 			}},
-		}, {
-			Name:    "JDK",
-			Version: "21.0.12.1+1",
-			Dir:     "jdk21",
-			Format:  TarGzip,
-			SHA256:  "3623232f33a9c3baadf304480b2535f9a3cba8a58d42ecbb438ba267315d9998",
-			Prefix:  "jdk-21.0.12.1+1/Contents/Home",
-			Parts: []Part{{
-				Path:   "payload/jdk21/OpenJDK21U-jdk_aarch64_mac_hotspot_21.0.12.1_1.tar.gz.part-000",
-				Size:   94371840,
-				SHA256: "66364b6204d07ef043b808d21a00cc254bd0328432bf73a88d243352c7461516",
-			}, {
-				Path:   "payload/jdk21/OpenJDK21U-jdk_aarch64_mac_hotspot_21.0.12.1_1.tar.gz.part-001",
-				Size:   94371840,
-				SHA256: "b9eb2b87d5a50d78e332631543cda54df617a120e2c954cf26ebc3dabad0a97b",
-			}, {
-				Path:   "payload/jdk21/OpenJDK21U-jdk_aarch64_mac_hotspot_21.0.12.1_1.tar.gz.part-002",
-				Size:   11329724,
-				SHA256: "0f7ecd01cdd8e4eb6e82f169242688f064306f953c81d197c4862529a866145f",
-			}},
-			Probes: []Probe{{
-				Path:    "bin/java",
-				Args:    []string{"-version"},
-				Want:    []string{"Temurin-21.0.12.1+1"},
-				Env:     []string{"JAVA_TOOL_OPTIONS=", "_JAVA_OPTIONS=", "JDK_JAVA_OPTIONS="},
-				Machine: MachARM64,
-			}},
-		}, {
+		}, jdkArchive(), {
 			Name:    "LLVM 22",
 			Version: "22.1.8",
 			Dir:     "llvm22",
