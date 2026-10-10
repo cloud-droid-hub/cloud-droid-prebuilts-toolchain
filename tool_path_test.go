@@ -30,6 +30,7 @@ func TestToolPaths(t *testing.T) {
 			root, repo, dest := tcPathSetup(t, host)
 			vars := tcEnvVars(dest, host)
 			paths := map[string]string{
+				"bash":    vars["CDH_BASH_BIN"],
 				"python":  vars["CDH_PYTHON_BIN"],
 				"go":      vars["GO_BIN"],
 				"java":    filepath.Join(vars["JAVA_HOME"], "bin", "java"),

@@ -1,4 +1,7 @@
-#!/usr/bin/env bash
+#!/bin/sh
+if [ "${BASH_SOURCE:-$0}" = "$0" ] && [ "${BASH:-bootstrap}" != "${CDH_BASH_BIN:-}" ]; then
+	exec "${CDH_BASH_BIN:-$(dirname "$0")/bash.sh}" "$0" "$@"
+fi
 # Copyright (c) 2025-2026 fei_cong(https://github.com/feicong/feicong-course)
 
 set -euo pipefail

@@ -1,4 +1,7 @@
-#!/usr/bin/env bash
+#!/bin/sh
+if [ "${BASH_SOURCE:-$0}" = "$0" ] && [ "${BASH:-bootstrap}" != "${CDH_BASH_BIN:-}" ]; then
+	exec "${CDH_BASH_BIN:-$(dirname "$0")/bash.sh}" "$0" "$@"
+fi
 # Copyright (c) 2025-2026 fei_cong(https://github.com/feicong/feicong-course)
 # 核验预编译sdk37组件：Build Tools 37.0.0与Platform android-36 r2的登记文件及设备HAL构建
 # 所需的libbinder_ndk_cpp头文件齐全、版本一致、不是链接，原生程序为当前宿主格式。

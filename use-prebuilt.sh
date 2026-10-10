@@ -1,9 +1,12 @@
-#!/usr/bin/env bash
+#!/bin/sh
+if [ "${BASH_SOURCE:-$0}" = "$0" ] && [ "${BASH:-bootstrap}" != "${CDH_BASH_BIN:-}" ]; then
+	exec "${CDH_BASH_BIN:-$(dirname "$0")/bash.sh}" "$0" "$@"
+fi
 set -euo pipefail
 
 usage() {
   printf '%s\n' 'usage: use-prebuilt.sh <install|check|env|path|require|require-env|revision> [--host HOST] [--repo-root DIR] [--dest DIR] [--print-plan] [--export] [--tool NAME]' >&2
-  printf '%s\n' 'tools: python go java javac bazel cargo rustc rustdoc clang clang++ ld lld ar readelf' >&2
+  printf '%s\n' 'tools: bash python go java javac bazel cargo rustc rustdoc clang clang++ ld lld ar readelf' >&2
   exit 2
 }
 
@@ -128,6 +131,7 @@ if (( has_tool )) && [[ "$command_name" != path ]]; then
 fi
 if [[ "$command_name" == path ]]; then
   case "$tool" in
+    bash) tool_key=CDH_BASH_BIN ;;
     python) tool_key=CDH_PYTHON_BIN ;;
     go) tool_key=GO_BIN ;;
     java) tool_key=JAVA_HOME; tool_suffix=/bin/java ;;
@@ -186,6 +190,7 @@ if [[ "$command_name" == require || "$command_name" == require-env ]]; then
     [[ "$actual" == "$expected" ]] || fail "构建工具路径被覆盖:${name}:${actual}:${expected}"
   }
   check_path GO_BIN "${canonical_dest}/go126/bin/go"
+  check_path CDH_BASH_BIN "${canonical_dest}/bash53/bin/bash"
   if [[ -n "${CDH_PYTHON_BIN:-}" ]]; then
     check_path CDH_PYTHON_BIN "${canonical_dest}/python314/bin/python3.14"
   fi
@@ -215,7 +220,7 @@ if [[ "$command_name" == require || "$command_name" == require-env ]]; then
   check_path CDH_ANDROID_AR "${canonical_dest}/llvm22/bin/llvm-ar"
   check_path CDH_HOST_LD "$host_ld"
   check_path CDH_TOOLCHAIN_ROOT "$canonical_dest"
-  path_prefix="${canonical_dest}/go126/bin:${canonical_dest}/jdk21trim1/bin:${canonical_dest}/llvm22/bin:${canonical_dest}/bazel851/bin:${canonical_dest}/rust197/bin"
+  path_prefix="${canonical_dest}/go126/bin:${canonical_dest}/jdk21trim1/bin:${canonical_dest}/llvm22/bin:${canonical_dest}/bazel851/bin:${canonical_dest}/rust197/bin:${canonical_dest}/bash53/bin"
   case "${PATH:-}" in
     "${path_prefix}:"*) ;;
     *) fail "构建工具PATH前缀被覆盖:${PATH:-}:${path_prefix}" ;;
@@ -311,6 +316,7 @@ if [[ "$command_name" == env || "$command_name" == path ]]; then
   esac
   write_env CDH_TOOLCHAIN_ROOT "${dest}"
   write_env GO_BIN "${dest}/go126/bin/go"
+  write_env CDH_BASH_BIN "${dest}/bash53/bin/bash"
   write_env CDH_PYTHON_BIN "${dest}/python314/bin/python3.14"
   write_env GOTOOLCHAIN local
   write_env JAVA_HOME "${dest}/jdk21trim1"
