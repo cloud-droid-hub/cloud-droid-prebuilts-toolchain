@@ -5,7 +5,7 @@
 ## 分支与目录
 
 - 仓库只在`main`分支提交和推送，不创建或维护其它长期分支。
-- 三个顶层宿主目录固定为`darwin-arm64/`、`linux-arm64/`和`linux-amd64/`。每个目录只发布与目录名一致的宿主可执行文件。共用脚本、`aidl36/`、`arm-runtime/`、`llvm22-pack/`、`jdk-trim/`、`python-trim/`及相应测试同属本仓，不放回主仓通用目录。
+- 三个顶层宿主目录固定为`darwin-arm64/`、`linux-arm64/`和`linux-amd64/`。每个目录只发布与目录名一致的宿主可执行文件。共用脚本、`aidl36/`、`arm-runtime/`、`llvm22-pack/`、`jdk-trim/`、`trim-pack/`、`python-trim/`及相应测试同属本仓，不放回主仓通用目录。
 - macOS只允许arm64宿主。Linux同时保留arm64与amd64原生构建工具；Linux amd64不表示支持运行云机。
 - 不得提交跨宿主架构编译器，不得在安装或验证失败时切换到系统编译器。
 - 主仓接入时优先复用本机已有Git对象和工作树，不得为了重新组织目录重复下载大归档。
@@ -45,7 +45,7 @@
 
 ## 代码与测试
 
-- 组件根模块覆盖包装入口测试及`python-trim/`；三个宿主目录及`arm-runtime/`、`llvm22-pack/`、`jdk-trim/`是互相独立的Go模块，最低Go版本为1.26。生成器按已登记相对路径绑定主仓`pkg/devicekit`的工作根接口，不依赖Git元数据。所有编程语言的自定义类、方法、函数、字段和变量名不超过16个字符，测试函数的`Test`前缀计入长度。
+- 组件根模块覆盖包装入口测试及`python-trim/`；三个宿主目录及`arm-runtime/`、`llvm22-pack/`、`jdk-trim/`、`trim-pack/`是互相独立的Go模块，最低Go版本为1.26。生成器按已登记相对路径绑定主仓`pkg/devicekit`的工作根接口，不依赖Git元数据。所有编程语言的自定义类、方法、函数、字段和变量名不超过16个字符，测试函数的`Test`前缀计入长度。
 - 先写能观察到失败的Go行为测试并实际取得红灯，再写实现。测试验证输入、输出、退出状态、文件模式、摘要和宿主架构，不读取源码文本断言实现细节。
 - Go测试运行时显式把`TMPDIR`设到本仓`build/test-tmp/`。提交前执行三个模块的适用聚焦测试、`go vet`、`git diff --check`和适用宿主的实际安装验证。
 - 不创建`.github/workflows/`，本仓不启用GitHub Actions。
