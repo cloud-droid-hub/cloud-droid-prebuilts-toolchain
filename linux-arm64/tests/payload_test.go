@@ -132,7 +132,7 @@ func TestJDK21(t *testing.T) {
 		t.Fatalf("archives=%d", len(spec.Archives))
 	}
 	archive := spec.Archives[1]
-	if archive.Name != "JDK" || archive.Version != "21.0.12.1+1" || archive.Dir != "jdk21trim1" {
+	if archive.Name != "JDK" || archive.Version != "21.0.12.1+1" || archive.Dir != "jdk21" {
 		t.Fatalf("archive=%+v", archive)
 	}
 	work, err := os.Getwd()
@@ -177,7 +177,7 @@ func TestJDK21(t *testing.T) {
 	if err := install.Run(context.Background(), repo, dest, spec); err != nil {
 		t.Fatal(err)
 	}
-	root := filepath.Join(dest, "jdk21trim1")
+	root := filepath.Join(dest, "jdk21")
 	err = filepath.Walk(root, func(pathName string, info os.FileInfo, walkErr error) error {
 		if walkErr != nil {
 			return walkErr

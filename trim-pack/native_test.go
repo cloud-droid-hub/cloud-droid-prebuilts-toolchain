@@ -285,7 +285,7 @@ func TestNative(t *testing.T) {
 	if !filepath.IsAbs(root) {
 		t.Fatal("消费者验收需要绝对路径CDH_TOOLCHAIN_ROOT登记裁剪后的JDK")
 	}
-	jdk := filepath.Join(root, "jdk21trim1")
+	jdk := filepath.Join(root, "jdk21")
 	nativeAPK(t, roots["sdk37"], jdk)
 	nativeAPK(t, roots["sdkapp37"], jdk)
 	for _, version := range []string{"3.22.1", "4.1.2"} {

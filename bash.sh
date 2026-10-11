@@ -31,7 +31,7 @@ fi
 CDH_BASH_BIN="$dest/bash53/bin/bash"
 CDH_BASH_RUN="$base/toolchains/bash.sh"
 export CDH_BASH_BIN CDH_BASH_RUN
-prefix="$dest/go126/bin:$dest/jdk21trim1/bin:$dest/llvm22/bin:$dest/bazel851/bin:$dest/rust197/bin:$dest/bash53/bin"
+prefix="$dest/go126/bin:$dest/jdk21/bin:$dest/llvm22/bin:$dest/bazel851/bin:$dest/rust197/bin:$dest/bash53/bin"
 case "$PATH" in
 	"$prefix"|"$prefix":*|"$dest/bash53/bin"|"$dest/bash53/bin":*) ;;
 	*) PATH="$dest/bash53/bin:$PATH" ;;

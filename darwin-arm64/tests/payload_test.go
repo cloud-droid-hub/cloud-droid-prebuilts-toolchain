@@ -51,7 +51,7 @@ func TestPayloads(t *testing.T) {
 	t.Setenv("JAVA_TOOL_OPTIONS", "")
 	t.Setenv("_JAVA_OPTIONS", "")
 	t.Setenv("JDK_JAVA_OPTIONS", "")
-	java := filepath.Join(dest, "jdk21trim1", "bin", "java")
+	java := filepath.Join(dest, "jdk21", "bin", "java")
 	output, err = exec.Command(java, "-version").CombinedOutput()
 	if err != nil {
 		t.Fatalf("java version: %v: %s", err, output)
@@ -67,7 +67,7 @@ func TestPayloads(t *testing.T) {
 		t.Fatalf("java mode=%#o", info.Mode().Perm())
 	}
 	for _, name := range []string{"CodeResources", "libjli.dylib", "Info.plist"} {
-		if _, err := os.Lstat(filepath.Join(dest, "jdk21trim1", name)); !os.IsNotExist(err) {
+		if _, err := os.Lstat(filepath.Join(dest, "jdk21", name)); !os.IsNotExist(err) {
 			t.Fatalf("JDK根含包装文件%s: %v", name, err)
 		}
 	}

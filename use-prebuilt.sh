@@ -195,7 +195,7 @@ if [[ "$command_name" == require || "$command_name" == require-env ]]; then
     check_path CDH_PYTHON_BIN "${canonical_dest}/python314/bin/python3.14"
   fi
   [[ "${GOTOOLCHAIN:-}" == local ]] || fail "Go工具链选择被覆盖:${GOTOOLCHAIN:-}:local"
-  check_path JAVA_HOME "${canonical_dest}/jdk21trim1"
+  check_path JAVA_HOME "${canonical_dest}/jdk21"
   check_path BAZEL_BIN "${canonical_dest}/bazel851/bin/bazel"
   check_path CDH_RUST_ROOT "${canonical_dest}/rust197"
   check_path CARGO_BIN "${canonical_dest}/rust197/bin/cargo"
@@ -220,7 +220,7 @@ if [[ "$command_name" == require || "$command_name" == require-env ]]; then
   check_path CDH_ANDROID_AR "${canonical_dest}/llvm22/bin/llvm-ar"
   check_path CDH_HOST_LD "$host_ld"
   check_path CDH_TOOLCHAIN_ROOT "$canonical_dest"
-  path_prefix="${canonical_dest}/go126/bin:${canonical_dest}/jdk21trim1/bin:${canonical_dest}/llvm22/bin:${canonical_dest}/bazel851/bin:${canonical_dest}/rust197/bin:${canonical_dest}/bash53/bin"
+  path_prefix="${canonical_dest}/go126/bin:${canonical_dest}/jdk21/bin:${canonical_dest}/llvm22/bin:${canonical_dest}/bazel851/bin:${canonical_dest}/rust197/bin:${canonical_dest}/bash53/bin"
   case "${PATH:-}" in
     "${path_prefix}:"*) ;;
     *) fail "构建工具PATH前缀被覆盖:${PATH:-}:${path_prefix}" ;;
@@ -319,7 +319,7 @@ if [[ "$command_name" == env || "$command_name" == path ]]; then
   write_env CDH_BASH_BIN "${dest}/bash53/bin/bash"
   write_env CDH_PYTHON_BIN "${dest}/python314/bin/python3.14"
   write_env GOTOOLCHAIN local
-  write_env JAVA_HOME "${dest}/jdk21trim1"
+  write_env JAVA_HOME "${dest}/jdk21"
   write_env BAZEL_BIN "${dest}/bazel851/bin/bazel"
   write_env CDH_RUST_ROOT "${dest}/rust197"
   write_env CARGO_BIN "${dest}/rust197/bin/cargo"

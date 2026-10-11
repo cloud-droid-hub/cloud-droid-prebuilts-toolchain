@@ -19,7 +19,7 @@
 - 三个宿主目录都不再发布LLVM 19；宿主与Android目标构建统一使用本仓裁剪后的LLVM 22目录，需要旧版本时从Git历史取回，不在本仓重新登记。
 - Android NDK固定为r29 revision`29.0.14206865`，NDK内Clang与LLD主版本固定为21。NDK内容只保留Android arm64目标所需的头文件、库、构建元数据、许可证与必要宿主工具。
 - Linux arm64没有Google官方宿主包时，只使用本目录LLVM 22与NDK目标sysroot、Clang 21 resource目录，不能运行其它宿主架构的NDK程序。
-- JDK固定为Temurin 21 LTS `21.0.12.1+1`，裁剪构建配置为`jdk21-build-v1`，安装目录为`jdk21trim1/`。保留所有运行模块、原版程序、`ct.sym`、JNI头文件、配置和许可证，只移除`jmods/`、`man/`与`lib/src.zip`。本仓`jdk-trim/`从固定摘要的完整上游包或原始分片自动生成及核验归档，不使用手工删除后的目录作输入；需要JDK模块链接时另外提供完整上游包中的`jmods/`。
+- JDK固定为Temurin 21 LTS `21.0.12.1+1`，裁剪构建配置为`jdk21-build-v1`，安装目录为`jdk21/`。保留所有运行模块、原版程序、`ct.sym`、JNI头文件、配置和许可证，只移除`jmods/`、`man/`与`lib/src.zip`。本仓`jdk-trim/`从固定摘要的完整上游包或原始分片自动生成及核验归档，不使用手工删除后的目录作输入；需要JDK模块链接时另外提供完整上游包中的`jmods/`。
 - Bazel固定为`8.5.1`，三个宿主目录都从本仓归档安装对应原生程序，构建时不得在线下载或改用系统Bazel。
 - AOSP15接口生成工具固定为`android-15.0.0_r36`的AIDL与HIDL，统一安装到`aosp15/`。macOS仅保留原始通用程序的arm64部分，Linux沿用对应宿主原始字节；运行库、来源元数据和许可证随包发布。
 - Android SDK固定为Build Tools 37.0.0与Platform `android-36` r2，统一安装到`sdk37/`并保持标准SDK根布局，只保留`aapt2`、`aidl`、`zipalign`、`d8`、`apksigner`、两个jar、`android.jar`、`optional/libbinder_ndk_cpp`头文件、运行库、版本元数据与许可证。组件内容变化时改用新的安装目录名，不原地替换已安装目录。macOS仅保留官方通用程序的arm64部分，Linux amd64沿用官方字节；Linux arm64原生程序取已登记的Commit451 `android-arm-build-tools` 37.0.0归档原始字节，其余文件取官方Linux归档。

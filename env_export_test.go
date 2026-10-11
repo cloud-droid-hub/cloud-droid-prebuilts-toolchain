@@ -28,7 +28,7 @@ func tcEnvVars(dest, host string) map[string]string {
 		"CDH_BASH_BIN":        filepath.Join(dest, "bash53", "bin", "bash"),
 		"CDH_PYTHON_BIN":      filepath.Join(dest, "python314", "bin", "python3.14"),
 		"GOTOOLCHAIN":         "local",
-		"JAVA_HOME":           filepath.Join(dest, "jdk21trim1"),
+		"JAVA_HOME":           filepath.Join(dest, "jdk21"),
 		"BAZEL_BIN":           filepath.Join(dest, "bazel851", "bin", "bazel"),
 		"CDH_RUST_ROOT":       filepath.Join(dest, "rust197"),
 		"CARGO_BIN":           filepath.Join(dest, "rust197", "bin", "cargo"),

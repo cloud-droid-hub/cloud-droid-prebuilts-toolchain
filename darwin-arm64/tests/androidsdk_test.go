@@ -25,7 +25,7 @@ func TestAndroidSDK(t *testing.T) {
 	}
 	var found []catalog.Archive
 	for _, item := range spec.Archives {
-		if item.Dir == "sdk37" || item.Dir == "jdk21trim1" {
+		if item.Dir == "sdk37" || item.Dir == "jdk21" {
 			found = append(found, item)
 		}
 	}
@@ -48,7 +48,7 @@ func TestAndroidSDK(t *testing.T) {
 	if err := install.Check(context.Background(), dest, spec); err != nil {
 		t.Fatal(err)
 	}
-	jdk := filepath.Join(dest, "jdk21trim1")
+	jdk := filepath.Join(dest, "jdk21")
 	tools := filepath.Join(dest, "sdk37", "build-tools", "37.0.0")
 	jar := filepath.Join(dest, "sdk37", "platforms", "android-36", "android.jar")
 	env := append(os.Environ(), "JAVA_HOME="+jdk, "PATH="+filepath.Join(jdk, "bin")+":"+os.Getenv("PATH"))

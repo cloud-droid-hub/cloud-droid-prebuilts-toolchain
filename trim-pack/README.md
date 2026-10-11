@@ -65,7 +65,7 @@ NDK的根`NOTICE`与`NOTICE.toolchain`保持上游完整字节。Linux amd64不�
 
 ## 本机消费者检查
 
-macOS arm64的`TestNative`读取`CDH_TRIM_NATIVE`下的`<组件>-darwin-arm64/payload.tar.gz`及报告，验证摘要后为每个组件建立独立职责内展开目录。它实际运行生成的Clang/LLD22编译并执行宿主程序，使用NDK的Clang/LLD21链接安卓AArch64程序，分别用SDK37和SDKApp37完成AIDL、资源、Java、DEX、对齐及APK签名校验，运行两版CMake与Ninja，并执行AOSP15的AIDL/HIDL接口生成。JDK由登记的`jdk21trim1/`提供，Java临时目录显式绑定测试工作根。安卓ELF只检查链接结果和目标架构，不在macOS执行；Linux原生消费者须单独验证。
+macOS arm64的`TestNative`读取`CDH_TRIM_NATIVE`下的`<组件>-darwin-arm64/payload.tar.gz`及报告，验证摘要后为每个组件建立独立职责内展开目录。它实际运行生成的Clang/LLD22编译并执行宿主程序，使用NDK的Clang/LLD21链接安卓AArch64程序，分别用SDK37和SDKApp37完成AIDL、资源、Java、DEX、对齐及APK签名校验，运行两版CMake与Ninja，并执行AOSP15的AIDL/HIDL接口生成。JDK由登记的`jdk21/`提供，Java临时目录显式绑定测试工作根。安卓ELF只检查链接结果和目标架构，不在macOS执行；Linux原生消费者须单独验证。
 
 两轮分别使用两个完整生成结果目录，测试程序只编译一次：
 

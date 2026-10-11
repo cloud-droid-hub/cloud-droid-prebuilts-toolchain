@@ -5,11 +5,11 @@ package catalog
 // jdkArchive保留完整构建运行时，输入和裁剪过程由主仓jdk-trim登记。
 func jdkArchive() Archive {
 	return Archive{
-		Name: "JDK", Version: "21.0.12.1+1", Dir: "jdk21trim1", Format: TarGzip,
+		Name: "JDK", Version: "21.0.12.1+1", Dir: "jdk21", Format: TarGzip,
 		Prefix: "jdk-21.0.12.1+1",
 		SHA256: "405ef8055a7c282cfab0ba454106c09b167cc22775672c0a3854a99681b28dce",
 		Parts: []Part{{
-			Path: "payload/jdk21trim1/OpenJDK21U-jdk-cdh-21.0.12.1-1-darwin-arm64.tar.gz.part-000",
+			Path: "payload/jdk21/OpenJDK21U-jdk-cdh-21.0.12.1-1-darwin-arm64.tar.gz.part-000",
 			Size: 72392094, SHA256: "405ef8055a7c282cfab0ba454106c09b167cc22775672c0a3854a99681b28dce",
 		}},
 		Files: []FileCheck{{

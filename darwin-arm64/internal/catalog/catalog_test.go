@@ -17,7 +17,7 @@ func TestCatalog(t *testing.T) {
 		t.Fatalf("archive=%+v", archive)
 	}
 	archive = spec.Archives[1]
-	if archive.Name != "JDK" || archive.Version != "21.0.12.1+1" || archive.Dir != "jdk21trim1" {
+	if archive.Name != "JDK" || archive.Version != "21.0.12.1+1" || archive.Dir != "jdk21" {
 		t.Fatalf("archive=%+v", archive)
 	}
 	archive = spec.Archives[2]
