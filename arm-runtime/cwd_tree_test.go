@@ -184,7 +184,7 @@ func TestSourceFail(t *testing.T) {
 		t.Fatal(err)
 	}
 	sum := sha256.Sum256(zipped.Bytes())
-	output := filepath.Join(base, "output")
+	output := filepath.Join(base, "source-out")
 	if err := sourceData(input, output, filepath.Join(base, "missing-work"), fmt.Sprintf("%x", sum)); err == nil {
 		t.Fatal("无效归档未被拒绝")
 	}
