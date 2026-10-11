@@ -22,7 +22,9 @@ linux-amd64/
 
 归档以不超过90 MiB的普通Git对象保存，不使用Git LFS。`<host>/bin/cdh-toolchain`负责摘要校验、安全展开、宿主架构检查和逐组件原子发布。主项目把本仓放在`toolchains/`，再把当前宿主工具展开到主仓`output/target/common/toolchains/<host>/`；缺失、版本错误或架构不符都会直接失败，不会改用系统工具。
 
-本仓同时维护环境与安装包装脚本、AIDL构建输入、ARM数据与源码工具以及LLVM、JDK、Python裁剪器。组件根Go模块覆盖包装入口的行为测试及`python-trim/`，三个宿主安装器和其它生成器保持独立模块。生成器通过相对路径使用主仓的`pkg/devicekit`工作根接口；主仓正式入口负责绑定临时目录及离线依赖，普通源码包按相同布局使用，无需Git元数据。
+`toolchain-init`每次都检查旧的`output/toolchains/<host>/`，新安装已经可用时也执行迁移。已登记且核验通过的旧组件以不覆盖重命名迁入缺失的新目录，保留组件inode；两个目录都有组件时，逐路径比较完整条目、类型、权限、属主、链接文字和普通文件字节，只清除完全相同的旧副本。旧目录仍被其它进程使用、存在不同内容、未知条目或路径身份变化时保留对应原件并报告。完整初始化有旧条目残留时返回失败，不把新工具检查通过作为清理完成；指定`--component`的冷启动只处理该组件，保留其它组件供完整初始化迁移。迁移不需要Git元数据。
+
+本仓同时维护环境与安装包装脚本、AIDL构建输入、ARM数据与源码工具以及LLVM、JDK、Python裁剪器。组件根Go模块覆盖包装入口的行为测试及`python-trim/`，三个宿主安装器和其它生成器保持独立模块。三个安装器通过本地`rehome/`模块共用迁移、完整目录比较及占用检查，macOS使用系统`lsof`，Linux读取当前用户进程的`/proc`，不下载额外工具。生成器通过相对路径使用主仓的`pkg/devicekit`工作根接口；主仓正式入口负责绑定临时目录及离线依赖，普通源码包按相同布局使用，无需Git元数据。
 
 在主仓根调用`./build/cwd-just.sh test-toolchain test-python-trim test-jdk-trim test-trim-pack test-arm-data test-llvm-pack`核验这些工具。组件根测试显式选择根包与`python-trim`，生成源码、归档测试数据及缓存保存到主仓`output/target/common/`，不作为首方包扫描。迁移及入口验证见[工具链目录归属记录](https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/issues/15)。
 

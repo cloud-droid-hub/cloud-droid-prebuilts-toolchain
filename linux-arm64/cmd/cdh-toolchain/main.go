@@ -80,7 +80,7 @@ func runSelect(ctx context.Context, args []string, stdout, stderr io.Writer, spe
 }
 
 func runInstall(ctx context.Context, args []string, stdout, stderr io.Writer, spec catalog.Spec) int {
-	repo, dest, spec, ok := parseArgs("install", args, stderr, spec)
+	repo, dest, spec, all, ok := parseArgs("install", args, stderr, spec)
 	if !ok {
 		return 2
 	}
@@ -88,12 +88,18 @@ func runInstall(ctx context.Context, args []string, stdout, stderr io.Writer, sp
 		fmt.Fprintf(stderr, "install failed: %v\n", err)
 		return 1
 	}
+	if all {
+		if err := install.CheckLegacy(repo, dest, spec.Host); err != nil {
+			fmt.Fprintf(stderr, "install failed: %v\n", err)
+			return 1
+		}
+	}
 	fmt.Fprintf(stdout, "installed %s\n", dest)
 	return 0
 }
 
 func runCheck(ctx context.Context, args []string, stdout, stderr io.Writer, spec catalog.Spec) int {
-	_, dest, spec, ok := parseArgs("check", args, stderr, spec)
+	_, dest, spec, _, ok := parseArgs("check", args, stderr, spec)
 	if !ok {
 		return 2
 	}
@@ -105,18 +111,18 @@ func runCheck(ctx context.Context, args []string, stdout, stderr io.Writer, spec
 	return 0
 }
 
-func parseArgs(name string, args []string, stderr io.Writer, spec catalog.Spec) (string, string, catalog.Spec, bool) {
+func parseArgs(name string, args []string, stderr io.Writer, spec catalog.Spec) (string, string, catalog.Spec, bool, bool) {
 	flags := flag.NewFlagSet(name, flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	repo := flags.String("repo", ".", "repository root")
 	dest := flags.String("dest", "", "installation root")
 	component := flags.String("component", "", "只处理指定安装目录的组件")
 	if err := flags.Parse(args); err != nil {
-		return "", "", spec, false
+		return "", "", spec, false, false
 	}
 	if flags.NArg() != 0 || *dest == "" {
 		fmt.Fprintln(stderr, "--dest is required and positional arguments are not accepted")
-		return "", "", spec, false
+		return "", "", spec, false, false
 	}
 	if *component != "" {
 		found := false
@@ -129,10 +135,10 @@ func parseArgs(name string, args []string, stderr io.Writer, spec catalog.Spec) 
 		}
 		if !found {
 			fmt.Fprintf(stderr, "unknown component: %s\n", *component)
-			return "", "", spec, false
+			return "", "", spec, false, false
 		}
 	}
-	return *repo, *dest, spec, true
+	return *repo, *dest, spec, *component == "", true
 }
 
 func usage(output io.Writer) {

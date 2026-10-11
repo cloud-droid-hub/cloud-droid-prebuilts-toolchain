@@ -75,7 +75,7 @@ func TestBashCold(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	dest := filepath.Join(work, "output", "toolchains", host)
+	dest := filepath.Join(work, "output", "target", "common", "toolchains", host)
 	cmd := exec.Command(filepath.Join(work, "toolchains/bash.sh"), "-c",
 		`declare -A vals=([ok]=yes); printf '%s|%s|%s' "${vals[ok]}" "$BASH_VERSION" "$BASH"`)
 	for _, entry := range os.Environ() {

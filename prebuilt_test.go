@@ -27,8 +27,8 @@ func tcTree(t *testing.T) (string, string) {
 	t.Helper()
 	root := t.TempDir()
 	tcCopy(t, "use-prebuilt.sh", filepath.Join(root, "toolchains", "use-prebuilt.sh"))
-	tcCopy(t, filepath.Join("..", "tools", "build", "git-worktree.sh"),
-		filepath.Join(root, "tools", "build", "git-worktree.sh"))
+	tcCopy(t, filepath.Join("..", "build", "git-worktree.sh"),
+		filepath.Join(root, "build", "git-worktree.sh"))
 
 	repo := filepath.Join(root, "toolchains")
 	bin := filepath.Join(repo, "darwin-arm64", "bin")
@@ -51,7 +51,7 @@ func tcTree(t *testing.T) (string, string) {
 func tcRun(t *testing.T, root, repo string) string {
 	t.Helper()
 	tool := filepath.Join(root, "toolchains", "use-prebuilt.sh")
-	cmd := exec.Command("bash", tool, "revision",
+	cmd := exec.Command(tcBash(t), tool, "revision",
 		"--host", "darwin-arm64",
 		"--repo-root", repo,
 		"--dest", filepath.Join(root, "dest"))
@@ -77,7 +77,7 @@ func TestTcRevPlain(t *testing.T) {
 func TestTcRoot(t *testing.T) {
 	root, _ := tcTree(t)
 	tool := filepath.Join(root, "toolchains", "use-prebuilt.sh")
-	cmd := exec.Command("bash", tool, "revision", "--host", "darwin-arm64",
+	cmd := exec.Command(tcBash(t), tool, "revision", "--host", "darwin-arm64",
 		"--dest", filepath.Join(root, "dest"))
 	var errs strings.Builder
 	cmd.Stderr = &errs
@@ -148,7 +148,7 @@ func tcPinned(t *testing.T) (string, string, string) {
 	if err := os.WriteFile(filepath.Join(root, ".gitmodules"), []byte("[submodule \"toolchains\"]\n\tpath = toolchains\n\tbranch = main\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	runTcGit(t, root, "add", "--", ".gitmodules", "tools/build/git-worktree.sh")
+	runTcGit(t, root, "add", "--", ".gitmodules", "build/git-worktree.sh")
 	runTcGit(t, root, "update-index", "--add", "--cacheinfo", "160000,"+pin+",toolchains")
 	runTcGit(t, root, "commit", "-q", "-m", "register toolchain")
 	if err := os.WriteFile(filepath.Join(repo, "later.txt"), []byte("new release\n"), 0o644); err != nil {
@@ -179,7 +179,7 @@ func TestTcUnpinned(t *testing.T) {
 	runTcGit(t, root, "update-index", "--cacheinfo", "160000,"+tcRev(t, repo, "origin/main")+",toolchains")
 	runTcGit(t, root, "commit", "-q", "-m", "register newer toolchain")
 	tool := filepath.Join(root, "toolchains", "use-prebuilt.sh")
-	cmd := exec.Command("bash", tool, "revision", "--host", "darwin-arm64", "--dest", filepath.Join(root, "dest"))
+	cmd := exec.Command(tcBash(t), tool, "revision", "--host", "darwin-arm64", "--dest", filepath.Join(root, "dest"))
 	if out, err := cmd.CombinedOutput(); err == nil {
 		t.Fatalf("未登记detached组件通过检查: %s", out)
 	}
@@ -192,6 +192,15 @@ func tcRev(t *testing.T, repo, ref string) string {
 		t.Fatal(err)
 	}
 	return strings.TrimSpace(string(out))
+}
+
+func tcBash(t *testing.T) string {
+	t.Helper()
+	root, err := filepath.Abs("..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return filepath.Join(root, "toolchains", "bash.sh")
 }
 
 func runTcGit(t *testing.T, dir string, args ...string) {

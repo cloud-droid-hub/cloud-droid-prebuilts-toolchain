@@ -81,6 +81,9 @@ func RunTo(ctx context.Context, repo, dest string, spec catalog.Spec, output io.
 	if err := checkFence(ctx, root); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
+	if err := rehomeRoot(ctx, repo, dest, root, spec, output); err != nil {
+		return err
+	}
 	total := len(spec.Archives)
 	for offset, archive := range spec.Archives {
 		item := progItem{

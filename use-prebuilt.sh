@@ -376,9 +376,4 @@ if [[ "$command_name" == check || "$command_name" == require ]]; then
   exit 0
 fi
 
-if [[ -d "$dest" ]] && GOTOOLCHAIN=local "$installer" check --dest "$dest"; then
-  printf 'using %s\n' "$dest"
-  exit 0
-fi
-
 exec /usr/bin/env GOTOOLCHAIN=local "$installer" install --repo "$repo" --dest "$dest"
