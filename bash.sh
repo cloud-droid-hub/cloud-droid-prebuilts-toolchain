@@ -12,7 +12,7 @@ case "$(/usr/bin/uname -s)/$(/usr/bin/uname -m)" in
 	*) printf '%s\n' 'Bash工具链不支持当前宿主' >&2; exit 2 ;;
 esac
 repo="$base/toolchains/$host"
-dest=${CDH_TOOLCHAIN_ROOT:-$base/output/toolchains/$host}
+dest=${CDH_TOOLCHAIN_ROOT:-$base/output/target/common/toolchains/$host}
 case "$dest" in
 	/*) ;;
 	*) printf '%s\n' 'Bash工具链根必须使用绝对路径' >&2; exit 2 ;;

@@ -163,14 +163,14 @@ if [[ -f /.dockerenv || -f /run/.containerenv ]]; then
   inside_container=1
 fi
 if [[ -z "$dest" ]]; then
-  dest="${CDH_TOOLCHAIN_ROOT:-${project_dir}/output/toolchains/${host}}"
+  dest="${CDH_TOOLCHAIN_ROOT:-${project_dir}/output/target/common/toolchains/${host}}"
 fi
 
 current_host=""
 if [[ "$command_name" == require || "$command_name" == require-env ]]; then
   current_host="$(detect_native)"
   canonical_repo="$script_dir"
-  canonical_dest="${project_dir}/output/toolchains/${current_host}"
+  canonical_dest="${project_dir}/output/target/common/toolchains/${current_host}"
   if (( inside_container )); then
     canonical_dest="/opt/cloud-droid-toolchains/${current_host}"
   fi
@@ -242,7 +242,7 @@ fi
 if [[ "$command_name" == revision ]]; then
   # 打包源码没有Git元数据时没有可核对的提交，改用组件仓登记版本标识工具链。
   # 判定按“该目录本身是不是Git工作树根”，不接受落到上级仓的结果。
-  probe="${project_dir}/tools/build/git-worktree.sh"
+  probe="${project_dir}/build/git-worktree.sh"
   [[ -x "$probe" ]] || fail "缺少Git工作树判定工具:${probe}"
   if ! command -v git >/dev/null 2>&1 || ! "$probe" "$repo_root"; then
     marker="${repo_root}/version.go"

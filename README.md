@@ -20,13 +20,13 @@ linux-amd64/
 
 只读组件的身份文件允许普通硬链接及组件内部的相对符号链接。检查固定打开后的真实普通文件，再核对登记大小与SHA-256；程序继续执行原生架构和版本探针。越出组件的链接、非普通文件和内容篡改仍失败，安装发布目标及模块边界文件保持独立校验。
 
-归档以不超过90 MiB的普通Git对象保存，不使用Git LFS。`<host>/bin/cdh-toolchain`负责摘要校验、安全展开、宿主架构检查和逐组件原子发布。主项目把本仓放在`toolchains/`，再把当前宿主工具展开到`output/toolchains/<host>/`；缺失、版本错误或架构不符都会直接失败，不会改用系统工具。
+归档以不超过90 MiB的普通Git对象保存，不使用Git LFS。`<host>/bin/cdh-toolchain`负责摘要校验、安全展开、宿主架构检查和逐组件原子发布。主项目把本仓放在`toolchains/`，再把当前宿主工具展开到主仓`output/target/common/toolchains/<host>/`；缺失、版本错误或架构不符都会直接失败，不会改用系统工具。
 
 本仓同时维护环境与安装包装脚本、AIDL构建输入、ARM数据与源码工具以及LLVM、JDK、Python裁剪器。组件根Go模块覆盖包装入口的行为测试及`python-trim/`，三个宿主安装器和其它生成器保持独立模块。生成器通过相对路径使用主仓的`pkg/devicekit`工作根接口；主仓正式入口负责绑定临时目录及离线依赖，普通源码包按相同布局使用，无需Git元数据。
 
-在主仓根调用`./tools/build/cwd-just.sh test-toolchain test-python-trim test-jdk-trim test-trim-pack test-arm-data test-llvm-pack`核验这些工具。组件根测试显式选择根包与`python-trim`，不把`build/`中的上游源码和归档测试数据作为首方包扫描。迁移及入口验证见[工具链目录归属记录](https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/issues/15)。
+在主仓根调用`./build/cwd-just.sh test-toolchain test-python-trim test-jdk-trim test-trim-pack test-arm-data test-llvm-pack`核验这些工具。组件根测试显式选择根包与`python-trim`，生成源码、归档测试数据及缓存保存到主仓`output/target/common/`，不作为首方包扫描。迁移及入口验证见[工具链目录归属记录](https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/issues/15)。
 
-LLVM22、NDK29、SDK37及AOSP15的三宿主裁剪由[trim-pack](trim-pack/README.md)从固定摘要原始输入生成。文件集合、保留链接、macOS切片、Linux ELF变换与元数据均由类型化策略登记；生成不读取旧裁剪包，核验可选择逐路径、类型、执行权限、链接及完整字节对照。统一正式入口为`./tools/build/cwd-just.sh trim-pack <component> <host> <source> <dest> [published]`，重复生成的完整归档、分片与报告须一致。
+LLVM22、NDK29、SDK37及AOSP15的三宿主裁剪由[trim-pack](trim-pack/README.md)从固定摘要原始输入生成。文件集合、保留链接、macOS切片、Linux ELF变换与元数据均由类型化策略登记；生成不读取旧裁剪包，核验可选择逐路径、类型、执行权限、链接及完整字节对照。统一正式入口为`./build/cwd-just.sh trim-pack <component> <host> <source> <dest> [published]`，重复生成的完整归档、分片与报告须一致。
 
 三个宿主的Temurin JDK使用`jdk21-build-v1`裁剪构建配置，安装到`jdk21/`。保留完整运行模块、全部原版程序、`ct.sym`、JNI头文件、配置与许可证，移除`jmods/`、`man/`和`lib/src.zip`；需要通过`jlink`生成其它模块镜像时，显式从完整上游包提供`--module-path`。三个压缩包合计225043301字节，相比完整上游包的613187926字节减少63.3%，各宿主只需一卷。裁剪由本仓`jdk-trim/`的类型化策略自动执行，输入绑定固定上游SHA-256，输出排序、权限、属主与时间戳规范化；`pack`生成归档、90MiB分片及动态报告，`verify`从同一输入重新计算完整输出，核对归档、分片和报告。具体命令见[jdk-trim/README.md](jdk-trim/README.md)；类型化目录同时核验裁剪标记和`java`、`javac`、`jar`、`keytool`身份。初始化会将没有裁剪标记的旧`jdk21/`原子换位至`jdk21-original/`，新候选先通过完整校验；旧目录内容、权限及身份保持。已有备份或损坏裁剪标记时拒绝，保留原件。
 
