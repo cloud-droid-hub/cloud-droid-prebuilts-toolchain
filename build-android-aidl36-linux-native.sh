@@ -12,6 +12,7 @@ project_root="$(cd -- "$script_dir/.." && pwd -P)"
 readonly project_root
 toolchain_root=""
 go_bin=""
+python_bin=""
 config_json=""
 source_tag=""
 schema=""
@@ -111,7 +112,7 @@ fixed_tc_root() {
 	if [[ -f /.dockerenv || -f /run/.containerenv ]]; then
 		printf '/opt/cloud-droid-toolchains/%s\n' "$host"
 	else
-		printf '%s/output/toolchains/%s\n' "$project_root" "$host"
+		printf '%s/output/target/common/toolchains/%s\n' "$project_root" "$host"
 	fi
 }
 
@@ -164,14 +165,42 @@ check_config_go() {
 	}
 }
 
+check_config_py() {
+	local expected_py description version
+	expected_py="$toolchain_root/python314/bin/python3.14"
+	[[ -z "${CDH_PYTHON_BIN:-}" || "$CDH_PYTHON_BIN" == "$expected_py" ]] || {
+		echo "AIDL配置Python偏离项目固定安装根:${CDH_PYTHON_BIN}:$expected_py" >&2
+		exit 3
+	}
+	python_bin="$expected_py"
+	[[ -f "$python_bin" && -x "$python_bin" ]] || {
+		echo "AIDL配置Python必须来自预编译工具链:$python_bin" >&2
+		exit 3
+	}
+	description="$(file -Lb "$python_bin")"
+	case "$(uname -s)/$(uname -m)" in
+		Darwin/arm64) [[ "$description" == *"Mach-O 64-bit executable arm64"* ]] ;;
+		Linux/aarch64|Linux/arm64) [[ "$description" == *"ELF 64-bit"*"ARM aarch64"* ]] ;;
+		Linux/x86_64|Linux/amd64) [[ "$description" == *"ELF 64-bit"*"x86-64"* ]] ;;
+	esac || {
+		echo "AIDL配置Python宿主架构不匹配:$description" >&2
+		exit 3
+	}
+	version="$("$python_bin" --version)"
+	[[ "$version" == "Python 3.14.8" ]] || {
+		echo "AIDL配置Python版本必须是3.14.8:$version" >&2
+		exit 3
+	}
+}
+
 load_config() {
 	local fields=() field source_count expected index offset
-	need_cmd python3
-	config_json="$(cd -- "$project_root" && GOTOOLCHAIN=local "$go_bin" run ./cmd/toolchaincfg aidl36)"
-	# macOS只提供bash 3.2，读取NUL分隔字段不能使用bash 4的mapfile。
+	config_json="$(cd -- "$project_root" && CDH_TARGET=common GOTOOLCHAIN=local GOPROXY=off GOSUMDB=off GONOPROXY=none \
+		"$project_root/build/cwd-go.sh" "$go_bin" run -buildvcs=false ./cmd/toolchaincfg aidl36)"
+	# NUL分隔字段保留空格和换行，不经Shell重新拆词。
 	while IFS= read -r -d '' field; do
 		fields+=("$field")
-	done < <(python3 - "$config_json" <<'PY'
+	done < <("$python_bin" - "$config_json" <<'PY'
 import json
 import sys
 
@@ -231,7 +260,7 @@ PY
 }
 
 host_info() {
-	python3 - "$config_json" "$(uname -m)" <<'PY'
+	"$python_bin" - "$config_json" "$(uname -m)" <<'PY'
 import json
 import sys
 
@@ -246,7 +275,7 @@ PY
 }
 
 build_machine() {
-	python3 - "$config_json" "$(uname -m)" <<'PY'
+	"$python_bin" - "$config_json" "$(uname -m)" <<'PY'
 import json
 import sys
 
@@ -303,7 +332,7 @@ canon_dir() {
 managed_mark() {
 	local root="$1"
 	[[ -f "$root/build-facts.json" && ! -L "$root/build-facts.json" ]] || return 1
-	python3 - "$root/build-facts.json" "$schema" "$tool_name" <<'PY'
+	"$python_bin" - "$root/build-facts.json" "$schema" "$tool_name" <<'PY'
 import json
 import sys
 
@@ -353,7 +382,7 @@ print_meta() {
 }
 
 print_plan() {
-	python3 - "$config_json" "$1" <<'PY'
+	"$python_bin" - "$config_json" "$1" <<'PY'
 import json
 import sys
 
@@ -427,12 +456,12 @@ check_llvm_tools() {
 check_tools() {
 	local tool
 	check_llvm_tools
-	for tool in cmake ninja bison flex git readelf ldd sha256sum install python3 realpath stat mv; do need_cmd "$tool"; done
+	for tool in cmake ninja bison flex git readelf ldd sha256sum install realpath stat mv; do need_cmd "$tool"; done
 }
 
 check_verify() {
 	local tool
-	for tool in file readelf ldd sha256sum python3 mktemp rm; do need_cmd "$tool"; done
+	for tool in file readelf ldd sha256sum mktemp rm; do need_cmd "$tool"; done
 	[[ "$(uname -s)" == Linux ]] || { echo "AIDL原生校验只支持Linux" >&2; exit 3; }
 	host_info >/dev/null
 }
@@ -511,14 +540,14 @@ codegen_probe() {
 		echo "AIDL Java代码生成输入无效:$input" >&2
 		return 1
 	}
-	probe_temp="$("$project_root/tools/build/cwd-temp.sh" new aidl-codegen)"
+	probe_temp="$(CDH_TARGET=common "$project_root/build/cwd-temp.sh" new aidl-codegen)"
 	generated="$probe_temp/$probe_output"
 	"$root/aidl" --lang=java -o "$probe_temp" -I"$root/probe/$probe_import" "$input"
 	[[ -s "$generated" && -f "$generated" && ! -L "$generated" ]] || {
 		echo "AIDL Java代码生成探针失败:$generated" >&2
 		return 1
 	}
-	probe_digest="$(python3 - "$generated" <<'PY'
+	probe_digest="$("$python_bin" - "$generated" <<'PY'
 import hashlib
 import sys
 
@@ -558,7 +587,7 @@ write_facts() {
 	linker_path="$(realpath "$(command -v "$lld_linker")")"
 	metadata="$(print_meta)"
 	codegen_probe "$root"
-	python3 - "$metadata" "$host" "$machine" "$compiler" "$linker" "$compiler_path" "$linker_path" "$digest" "$build_root/compile_commands.json" "$probe_digest" >"$root/build-facts.json" <<'PY'
+	"$python_bin" - "$metadata" "$host" "$machine" "$compiler" "$linker" "$compiler_path" "$linker_path" "$digest" "$build_root/compile_commands.json" "$probe_digest" >"$root/build-facts.json" <<'PY'
 import json
 import shlex
 import sys
@@ -619,7 +648,7 @@ verify_aidl() {
 	IFS=$'\t' read -r host machine _ < <(host_info)
 	digest="$(sha256sum "$root/aidl" | awk '{print $1}')"
 	metadata="$(print_meta)"
-	python3 - "$root/build-facts.json" "$metadata" "$host" "$machine" "$digest" "$probe_digest" <<'PY'
+	"$python_bin" - "$root/build-facts.json" "$metadata" "$host" "$machine" "$digest" "$probe_digest" <<'PY'
 import json
 import re
 import sys
@@ -737,6 +766,7 @@ build_aidl() {
 }
 
 check_config_go
+check_config_py
 load_config
 
 while [[ "$#" -gt 0 ]]; do
@@ -776,7 +806,7 @@ if ((check_toolchain == 1)); then
 fi
 [[ -n "$destination" ]] || { echo "缺少--destination" >&2; usage >&2; exit 2; }
 if ((check_paths == 1)); then
-	for command_name in install python3 realpath stat; do need_cmd "$command_name"; done
+	for command_name in install realpath stat; do need_cmd "$command_name"; done
 	prep_paths
 	echo "==> AIDL目录检查通过:$destination"
 	exit 0
