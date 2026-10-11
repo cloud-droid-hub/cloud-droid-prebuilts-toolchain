@@ -260,6 +260,15 @@ if [[ "$command_name" == revision ]]; then
   branch="$(git -C "$repo_root" symbolic-ref --quiet --short HEAD || true)"
   if [[ -z "$branch" ]]; then
     revision="$(git -C "$repo_root" rev-parse HEAD)"
+    # submodule update检出主仓锁定对象；远端发布新版本不改变该源码身份。
+    if [[ "$(cd "$repo_root" && pwd -P)" == "${project_dir}/toolchains" ]] && "$probe" "$project_dir"; then
+      entry="$(git -C "$project_dir" ls-tree HEAD -- toolchains)"
+      read -r mode kind pinned path <<< "$entry"
+      if [[ "$mode" == 160000 && "$kind" == commit && "$path" == toolchains && "$revision" == "$pinned" ]]; then
+        printf '%s\n' "$revision"
+        exit 0
+      fi
+    fi
     upstream_rev="$(git -C "$repo_root" rev-parse origin/main)" || fail "组件仓缺少origin/main:${repo_root}"
     [[ "$revision" == "$upstream_rev" ]] || fail "detached组件仓不是origin/main:${repo_root}"
     if symbolic_main="$(git -C "$repo_root" symbolic-ref --quiet refs/heads/main 2>/dev/null)"; then

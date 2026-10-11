@@ -125,6 +125,75 @@ func TestTcRevOuter(t *testing.T) {
 	}
 }
 
+func tcPinned(t *testing.T) (string, string, string) {
+	t.Helper()
+	root, repo := tcTree(t)
+	for _, dir := range []string{root, repo} {
+		runTcGit(t, dir, "init", "-q", "-b", "main", "--template=")
+		runTcGit(t, dir, "config", "user.name", "tc-test")
+		runTcGit(t, dir, "config", "user.email", "tc@example.invalid")
+	}
+	runTcGit(t, repo, "add", "-A")
+	runTcGit(t, repo, "commit", "-q", "-m", "pinned toolchain")
+	cmd := exec.Command("git", "-C", repo, "rev-parse", "HEAD")
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	pin := strings.TrimSpace(string(out))
+	bare := filepath.Join(t.TempDir(), "origin.git")
+	runTcGit(t, root, "init", "-q", "--bare", "-b", "main", "--template=", bare)
+	runTcGit(t, repo, "remote", "add", "origin", bare)
+	runTcGit(t, repo, "push", "-q", "-u", "origin", "main")
+	if err := os.WriteFile(filepath.Join(root, ".gitmodules"), []byte("[submodule \"toolchains\"]\n\tpath = toolchains\n\tbranch = main\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runTcGit(t, root, "add", "--", ".gitmodules", "tools/build/git-worktree.sh")
+	runTcGit(t, root, "update-index", "--add", "--cacheinfo", "160000,"+pin+",toolchains")
+	runTcGit(t, root, "commit", "-q", "-m", "register toolchain")
+	if err := os.WriteFile(filepath.Join(repo, "later.txt"), []byte("new release\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runTcGit(t, repo, "add", "--", "later.txt")
+	runTcGit(t, repo, "commit", "-q", "-m", "new release")
+	runTcGit(t, repo, "push", "-q", "origin", "main")
+	runTcGit(t, repo, "switch", "--detach", "-q", pin)
+	return root, repo, pin
+}
+
+func TestTcPinned(t *testing.T) {
+	root, repo, pin := tcPinned(t)
+	for range 2 {
+		if got := tcRun(t, root, repo); got != pin {
+			t.Fatalf("登记组件版本=%q want=%q", got, pin)
+		}
+		cmd := exec.Command("git", "-C", repo, "symbolic-ref", "--quiet", "HEAD")
+		if err := cmd.Run(); err == nil {
+			t.Fatal("登记detached组件被切换分支")
+		}
+	}
+}
+
+func TestTcUnpinned(t *testing.T) {
+	root, repo, _ := tcPinned(t)
+	runTcGit(t, root, "update-index", "--cacheinfo", "160000,"+tcRev(t, repo, "origin/main")+",toolchains")
+	runTcGit(t, root, "commit", "-q", "-m", "register newer toolchain")
+	tool := filepath.Join(root, "toolchains", "use-prebuilt.sh")
+	cmd := exec.Command("bash", tool, "revision", "--host", "darwin-arm64", "--dest", filepath.Join(root, "dest"))
+	if out, err := cmd.CombinedOutput(); err == nil {
+		t.Fatalf("未登记detached组件通过检查: %s", out)
+	}
+}
+
+func tcRev(t *testing.T, repo, ref string) string {
+	t.Helper()
+	out, err := exec.Command("git", "-C", repo, "rev-parse", ref).Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return strings.TrimSpace(string(out))
+}
+
 func runTcGit(t *testing.T, dir string, args ...string) {
 	t.Helper()
 	cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)

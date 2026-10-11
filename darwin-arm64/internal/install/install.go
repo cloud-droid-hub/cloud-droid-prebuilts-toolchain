@@ -100,6 +100,16 @@ func RunTo(ctx context.Context, repo, dest string, spec catalog.Spec, output io.
 		component, openErr := openDir(root, archive.Dir)
 		if openErr == nil {
 			checkErr := checkComp(ctx, component, archive)
+			migrated := false
+			if checkErr != nil {
+				var fixErr error
+				migrated, fixErr = migrateJDK(ctx, repo, root, component, archive)
+				if fixErr != nil {
+					checkErr = errors.Join(checkErr, fixErr)
+				} else if migrated {
+					checkErr = nil
+				}
+			}
 			closeErr := component.Close()
 			if checkErr != nil {
 				return fmt.Errorf("existing component %s is invalid: %w", archive.Name, checkErr)
@@ -110,7 +120,14 @@ func RunTo(ctx context.Context, repo, dest string, spec catalog.Spec, output io.
 			if err := matchRoot(root, dest); err != nil {
 				return err
 			}
-			progress.line(item, "skipped", started)
+			state := "skipped"
+			if migrated {
+				state = "migrated"
+				if _, err := fmt.Fprintln(output, "preserved legacy JDK at "+filepath.Join(dest, "jdk21-original")); err != nil {
+					return fmt.Errorf("write JDK backup path: %w", err)
+				}
+			}
+			progress.line(item, state, started)
 			if err := progress.result(); err != nil {
 				return err
 			}
@@ -308,6 +325,47 @@ func installArc(ctx context.Context, repo string, root *os.File, archive catalog
 		return errors.New("published component identity changed")
 	}
 	return nil
+}
+
+// migrateJDK先验证登记候选，再原子换位，保留没有裁剪标记的旧JDK。
+func migrateJDK(ctx context.Context, repo string, root, prior *os.File, archive catalog.Archive) (bool, error) {
+	if archive.Name != "JDK" || archive.Dir != "jdk21" {
+		return false, nil
+	}
+	var marker unix.Stat_t
+	if err := unix.Fstatat(int(prior.Fd()), "cdh-jdk-trim.txt", &marker, unix.AT_SYMLINK_NOFOLLOW); !errors.Is(err, unix.ENOENT) {
+		return false, nil
+	}
+	saved := archive
+	saved.Dir = "jdk21-original"
+	if err := installArc(ctx, repo, root, saved); err != nil {
+		return false, fmt.Errorf("prepare JDK migration without replacement: %w", err)
+	}
+	fresh, err := openDir(root, saved.Dir)
+	if err != nil {
+		return false, err
+	}
+	defer fresh.Close()
+	swapped := false
+	defer func() {
+		if !swapped && sameChild(root, fresh, saved.Dir) {
+			clearTemp(root, fresh, saved.Dir)
+		}
+	}()
+	if err := ctx.Err(); err != nil {
+		return false, err
+	}
+	if !sameChild(root, prior, archive.Dir) || !sameChild(root, fresh, saved.Dir) {
+		return false, errors.New("JDK directory changed before migration")
+	}
+	if err := swapAt(root, archive.Dir, saved.Dir); err != nil {
+		return false, fmt.Errorf("exchange verified JDK with legacy directory: %w", err)
+	}
+	swapped = true
+	if !sameChild(root, fresh, archive.Dir) || !sameChild(root, prior, saved.Dir) {
+		return false, errors.New("JDK directory identity changed during migration")
+	}
+	return true, nil
 }
 
 func checkFence(ctx context.Context, root *os.File) error {

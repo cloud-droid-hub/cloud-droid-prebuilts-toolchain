@@ -18,6 +18,10 @@ func swapDirs(left, right string) error {
 	return unix.RenamexNp(left, right, unix.RENAME_SWAP)
 }
 
+func swapAt(root *os.File, left, right string) error {
+	return unix.RenameatxNp(int(root.Fd()), left, int(root.Fd()), right, unix.RENAME_SWAP)
+}
+
 func moveNew(from *os.File, name string, root *os.File) error {
 	return unix.RenameatxNp(int(from.Fd()), name, int(root.Fd()), name, unix.RENAME_EXCL)
 }

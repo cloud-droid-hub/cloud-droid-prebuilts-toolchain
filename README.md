@@ -28,7 +28,7 @@ linux-amd64/
 
 LLVM22、NDK29、SDKApp37及AOSP15的三宿主裁剪由[trim-pack](trim-pack/README.md)从固定摘要原始输入生成。文件集合、保留链接、macOS切片、Linux ELF变换与元数据均由类型化策略登记；生成不读取旧裁剪包，核验可选择逐路径、类型、执行权限、链接及完整字节对照。统一正式入口为`./tools/build/cwd-just.sh trim-pack <component> <host> <source> <dest> [published]`，重复生成的完整归档、分片与报告须一致。
 
-三个宿主的Temurin JDK使用`jdk21-build-v1`裁剪构建配置，安装到`jdk21/`。保留完整运行模块、全部原版程序、`ct.sym`、JNI头文件、配置与许可证，移除`jmods/`、`man/`和`lib/src.zip`；需要通过`jlink`生成其它模块镜像时，显式从完整上游包提供`--module-path`。三个压缩包合计225043301字节，相比完整上游包的613187926字节减少63.3%，各宿主只需一卷。裁剪由本仓`jdk-trim/`的类型化策略自动执行，输入绑定固定上游SHA-256，输出排序、权限、属主与时间戳规范化；`pack`生成归档、90MiB分片及动态报告，`verify`从同一输入重新计算完整输出，核对归档、分片和报告。具体命令见[jdk-trim/README.md](jdk-trim/README.md)；类型化目录同时核验裁剪标记和`java`、`javac`、`jar`、`keytool`身份。已有`jdk21/`必须通过这些检查；不符合时保留并移至自有备份目录，再安装登记组件，安装器不会覆盖它。
+三个宿主的Temurin JDK使用`jdk21-build-v1`裁剪构建配置，安装到`jdk21/`。保留完整运行模块、全部原版程序、`ct.sym`、JNI头文件、配置与许可证，移除`jmods/`、`man/`和`lib/src.zip`；需要通过`jlink`生成其它模块镜像时，显式从完整上游包提供`--module-path`。三个压缩包合计225043301字节，相比完整上游包的613187926字节减少63.3%，各宿主只需一卷。裁剪由本仓`jdk-trim/`的类型化策略自动执行，输入绑定固定上游SHA-256，输出排序、权限、属主与时间戳规范化；`pack`生成归档、90MiB分片及动态报告，`verify`从同一输入重新计算完整输出，核对归档、分片和报告。具体命令见[jdk-trim/README.md](jdk-trim/README.md)；类型化目录同时核验裁剪标记和`java`、`javac`、`jar`、`keytool`身份。初始化会将没有裁剪标记的旧`jdk21/`原子换位至`jdk21-original/`，新候选先通过完整校验；旧目录内容、权限及身份保持。已有备份或损坏裁剪标记时拒绝，保留原件。
 
 三个宿主还提供固定`android-15.0.0_r36`的AIDL与HIDL生成工具，统一安装到`aosp15/`，使调用方可以直接使用登记输入。三份归档合计9673774字节，均为普通文件；来源、许可证、安装与实际代码生成结果见[AOSP15工具记录](https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/issues/10)。设备构建器接入单独提交，本次工具发布不能代替完整Codec2或发行验收。
 
