@@ -18,7 +18,11 @@ func TestTempCWD(t *testing.T) {
 		t.Fatal(err)
 	}
 	root := os.Getenv("TMPDIR")
-	want := filepath.Join(base, "build", "tmp") + string(os.PathSeparator)
+	scope, err := workpath.Scope(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(scope, "tmp") + string(os.PathSeparator)
 	if !strings.HasPrefix(root, want) {
 		t.Fatalf("测试临时根未采用工作根:root=%s want=%s", root, want)
 	}
