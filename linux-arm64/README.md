@@ -12,7 +12,7 @@ NDK不包含Google发布的Linux amd64宿主程序。Android arm64编译使用�
 
 0.14.1的`sdk37/`归档曾提供Build Tools 37.0.0与Platform `android-36` r2的裁剪内容。Google不发布Linux arm64原生程序，`aapt2`、`aidl`、`zipalign`取已登记的Commit451 `android-arm-build-tools` 37.0.0归档原始字节（由`android-17.0.0_r1`源码构建，依赖宿主glibc、`libstdc++.so.6`与`libz.so.1`）；`d8`、`apksigner`、两个jar、`android.jar`与`optional/libbinder_ndk_cpp`头文件取官方归档。该归档47392895字节、单卷。Ubuntu26.04 arm64原生容器实际安装并完成APK构建、签名与回读，见[Android SDK记录](https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/issues/8)与[第二版记录](https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/issues/9)。
 
-`sdkapp37/`供系统、HAL与源码App共用，只含本宿主可登记的部分：Build Tools 37.0.0与Platform `android-34` r3、`android-35` r2、`android-36` r2、`android-37.0` r2；android-36保留`optional/libbinder_ndk_cpp`头文件。Build Tools 37.0.0的`aapt2`、`aidl`、`zipalign`取已登记的Commit451 37.0.0原始字节，其余文件取官方Linux zip；Build Tools 34.0.0至36.0.0与CMake没有登记的arm64来源，不在归档内。归档132611877字节、2卷，交叉编译的`TestAppSDK`在arm64 Linux容器内完成安装与核验，见[sdkapp37-v1记录](https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/issues/11)。
+`sdk37/`供系统、HAL与源码App共用，只含本宿主可登记的部分：Build Tools 37.0.0与Platform `android-34` r3、`android-35` r2、`android-36` r2、`android-37.0` r2；android-36保留`optional/libbinder_ndk_cpp`头文件。Build Tools 37.0.0的`aapt2`、`aidl`、`zipalign`取已登记的Commit451 37.0.0原始字节，其余文件取官方Linux zip；Build Tools 34.0.0至36.0.0与CMake没有登记的arm64来源，不在归档内。归档132611877字节、2卷，交叉编译的分片安装测试在arm64 Linux容器内完成安装与核验，见[完整SDK记录](https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/issues/11)。
 
 在仓库根执行：
 

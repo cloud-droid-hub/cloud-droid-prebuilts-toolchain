@@ -1,6 +1,6 @@
 # 现有工具链裁剪生成
 
-`trim-pack`从固定摘要的原始发行包或原版文件生成LLVM22、NDK29、SDKApp37和AOSP15的三宿主裁剪归档。源文件、文件过滤、工具集合、保留链接、macOS arm64切片和元数据均由编译期Go定义登记。`pack`不读取现有裁剪包；只有`verify --published`可把现有包作为对照。
+`trim-pack`从固定摘要的原始发行包或原版文件生成LLVM22、NDK29、SDK37和AOSP15的三宿主裁剪归档。源文件、文件过滤、工具集合、保留链接、macOS arm64切片和元数据均由编译期Go定义登记。`pack`不读取现有裁剪包；只有`verify --published`可把现有包作为对照。
 
 OpenJDK使用相邻的`jdk-trim`工具。Go使用完整上游发行包；Bazel使用原版可执行程序与许可证；Rust保留官方rustc、Cargo、宿主及安卓标准库组件的完整内容，不属于文件裁剪。Linux arm64的安卓标准库由原版组件内容组装，没有该目标的安装manifest；其它组件的原版安装manifest保留。组件选择和安装元数据与内容裁剪分别核对。这些组件不套用本工具的裁剪策略。Bash的原版构建与安装由其工具链入口维护。
 
@@ -11,7 +11,7 @@ OpenJDK使用相邻的`jdk-trim`工具。Go使用完整上游发行包；Bazel�
 ```sh
 mkdir -p build/trim-inputs build/trim-result
 ./tools/build/cwd-just.sh test-trim-pack
-./tools/build/cwd-just.sh trim-pack sdkapp37 darwin-arm64 build/trim-inputs build/trim-result/sdkapp37
+./tools/build/cwd-just.sh trim-pack sdk37 darwin-arm64 build/trim-inputs build/trim-result/sdk37
 ```
 
 四个组件统一使用同一参数顺序，宿主为`darwin-arm64`、`linux-arm64`或`linux-amd64`。最后一个可选参数为当前组件分片目录：
@@ -41,8 +41,7 @@ build/trim-pack/trim-pack verify --component aosp15 --host darwin-arm64 \
 | LLVM22 macOS | LLVM官方`llvmorg-22.1.8`的`LLVM-22.1.8-macOS-ARM64.tar.xz`及同tag的完整许可证 | 保留登记的35个工具、头文件、Clang资源、C++/unwind/Clang库与共享数据，删除未保留工具和指定空目录；按类型化规则展开别名，保留`clang`、`ld.lld`链接 |
 | LLVM22 Linux | `debs.go`登记的Ubuntu官方DEB版本、大小、摘要及路径；附固定patchelf 0.18.0源码 | 九个LLVM包选取登记工具、头文件、资源和库；按固定DEB集合加入运行库闭包及每类版权；生成来源表；重放相对ELF RPATH变换 |
 | NDK29 | Google官方r29 Darwin/Linux ZIP | 保留安卓AArch64头文件、API库、Clang 21资源及版权；macOS/Linux amd64还保留构建工具、API 21–35包装入口、构建定义及cpufeatures；macOS选取arm64切片；Linux arm64为目标数据包 |
-| SDK37 | Google Build Tools 37、Platform 36；Linux arm64加入固定Commit451原生Build Tools | 保留AIDL、aapt2、zipalign、D8、apksigner、必需运行库、android.jar、Binder NDK C++数据及完整NOTICE；macOS选取arm64切片 |
-| SDKApp37 | Google Build Tools 34/35/35.0.1/36/37、Platform 34/35/36/37、CMake 3.22.1/4.1.2和固定仓库XML；Linux arm64加入同一Commit451输入 | 删除旧RenderScript、非目标链接器、CMake文档及未保留工具、平台皮肤/模板/资源与stub源；保留Java/native构建内容及许可；生成固定版本包元数据；Linux arm64只保留Build Tools 37及四个平台 |
+| SDK37 | Google Build Tools 34/35/35.0.1/36/37、Platform 34/35/36/37、CMake 3.22.1/4.1.2和固定仓库XML；Linux arm64加入固定Commit451原生Build Tools | 删除旧RenderScript、非目标链接器、CMake文档及未保留工具、平台皮肤/模板/资源与stub源；保留Java/native构建内容及许可；生成固定版本包元数据；Linux arm64只保留Build Tools 37及四个平台 |
 | AOSP15 | AOSP`android-15.0.0_r36`的原版aidl、hidl-gen、宿主共享库和九份许可证 | 按宿主保留程序与运行库，macOS选取arm64切片，生成固定`source.properties` |
 
 Linux LLVM的DEB输入以[Ubuntu快照](https://snapshot.ubuntu.com/)的固定时间路径登记；快照缺少的已登记Z3和libpfm amd64包使用官方ports/archive地址，仍以固定摘要校验。amd64的libedit与GnuTLS使用登记的Ubuntu 24.04版本，其余为Ubuntu 26.04版本。原始输入可以离线保存；来源服务器不再提供某版本时不能换包后继续。
@@ -65,7 +64,7 @@ NDK的根`NOTICE`与`NOTICE.toolchain`保持上游完整字节。Linux amd64不�
 
 ## 本机消费者检查
 
-macOS arm64的`TestNative`读取`CDH_TRIM_NATIVE`下的`<组件>-darwin-arm64/payload.tar.gz`及报告，验证摘要后为每个组件建立独立职责内展开目录。它实际运行生成的Clang/LLD22编译并执行宿主程序，使用NDK的Clang/LLD21链接安卓AArch64程序，分别用SDK37和SDKApp37完成AIDL、资源、Java、DEX、对齐及APK签名校验，运行两版CMake与Ninja，并执行AOSP15的AIDL/HIDL接口生成。JDK由登记的`jdk21/`提供，Java临时目录显式绑定测试工作根。安卓ELF只检查链接结果和目标架构，不在macOS执行；Linux原生消费者须单独验证。
+macOS arm64的`TestNative`读取`CDH_TRIM_NATIVE`下的`<组件>-darwin-arm64/payload.tar.gz`及报告，验证摘要后为每个组件建立独立职责内展开目录。它实际运行生成的Clang/LLD22编译并执行宿主程序，使用NDK的Clang/LLD21链接安卓AArch64程序，用SDK37完成AIDL、资源、Java、DEX、对齐及APK签名校验，运行两版CMake与Ninja，并执行AOSP15的AIDL/HIDL接口生成。JDK由登记的`jdk21/`提供，Java临时目录显式绑定测试工作根。安卓ELF只检查链接结果和目标架构，不在macOS执行；Linux原生消费者须单独验证。
 
 两轮分别使用两个完整生成结果目录，测试程序只编译一次：
 

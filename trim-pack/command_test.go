@@ -15,7 +15,7 @@ import (
 
 func TestInputs(t *testing.T) {
 	for _, host := range []string{"darwin-arm64", "linux-arm64", "linux-amd64"} {
-		for _, comp := range []string{"llvm22", "ndk29", "sdkapp37", "aosp15"} {
+		for _, comp := range []string{"llvm22", "ndk29", "sdk37", "aosp15"} {
 			var out bytes.Buffer
 			if err := run(context.Background(), []string{"inputs", "--host", host, "--component", comp}, &out); err != nil {
 				t.Fatal(err)
@@ -37,7 +37,7 @@ func TestInputs(t *testing.T) {
 		}
 	}
 	var out bytes.Buffer
-	err := run(context.Background(), []string{"pack", "--host", "darwin-arm64", "--component", "sdkapp37",
+	err := run(context.Background(), []string{"pack", "--host", "darwin-arm64", "--component", "sdk37",
 		"--source", "missing-source", "--dest", "missing-output", "--published", "missing-published"}, &out)
 	if err == nil || !strings.Contains(err.Error(), "pack不读取published") || out.Len() != 0 {
 		t.Fatalf("pack接受现有裁剪包作为输入：%v %s", err, out.String())
@@ -47,7 +47,7 @@ func TestInputs(t *testing.T) {
 func TestSDKRetired(t *testing.T) {
 	for _, host := range []string{"darwin-arm64", "linux-arm64", "linux-amd64"} {
 		var out bytes.Buffer
-		err := run(context.Background(), []string{"inputs", "--host", host, "--component", "sdk37"}, &out)
+		err := run(context.Background(), []string{"inputs", "--host", host, "--component", "sdkapp37"}, &out)
 		if err == nil || out.Len() != 0 {
 			t.Fatalf("重复SDK仍可生成：%s %v %s", host, err, out.String())
 		}

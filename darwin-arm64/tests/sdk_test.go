@@ -15,14 +15,14 @@ import (
 )
 
 // 从本仓分片安装源码App构建用SDK，核验各组件的包描述、原生程序架构与版本输出。
-func TestAppSDK(t *testing.T) {
+func TestSDKFull(t *testing.T) {
 	spec := catalog.Current()
 	if spec.Host != runtime.GOOS+"-"+runtime.GOARCH {
 		t.Skip("App SDK tools need their native host")
 	}
 	var found []catalog.Archive
 	for _, item := range spec.Archives {
-		if item.Dir == "sdkapp37" {
+		if item.Dir == "sdk37" {
 			found = append(found, item)
 		}
 	}
@@ -45,7 +45,7 @@ func TestAppSDK(t *testing.T) {
 	if err := install.Check(context.Background(), dest, spec); err != nil {
 		t.Fatal(err)
 	}
-	root := filepath.Join(dest, "sdkapp37")
+	root := filepath.Join(dest, "sdk37")
 	want := map[string]string{
 		"build-tools/34.0.0": "Pkg.Revision=34.0.0", "build-tools/35.0.0": "Pkg.Revision=35.0.0",
 		"build-tools/35.0.1": "Pkg.Revision=35.0.1", "build-tools/36.0.0": "Pkg.Revision=36.0.0",

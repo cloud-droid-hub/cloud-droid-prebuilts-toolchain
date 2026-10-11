@@ -244,7 +244,7 @@ func TestNative(t *testing.T) {
 		t.Fatal(err)
 	}
 	roots := map[string]string{}
-	for _, comp := range []string{"llvm22", "ndk29", "sdkapp37", "aosp15"} {
+	for _, comp := range []string{"llvm22", "ndk29", "sdk37", "aosp15"} {
 		roots[comp] = nativeTree(t, dir, comp, filepath.Join(work, comp))
 	}
 	env := os.Environ()
@@ -286,9 +286,9 @@ func TestNative(t *testing.T) {
 		t.Fatal("消费者验收需要绝对路径CDH_TOOLCHAIN_ROOT登记裁剪后的JDK")
 	}
 	jdk := filepath.Join(root, "jdk21")
-	nativeAPK(t, roots["sdkapp37"], jdk)
+	nativeAPK(t, roots["sdk37"], jdk)
 	for _, version := range []string{"3.22.1", "4.1.2"} {
-		bin := filepath.Join(roots["sdkapp37"], "cmake", version, "bin")
+		bin := filepath.Join(roots["sdk37"], "cmake", version, "bin")
 		if out := nativeCmd(t, work, env, filepath.Join(bin, "cmake"), "--version"); !strings.Contains(out, "cmake version "+version) {
 			t.Fatal(out)
 		}

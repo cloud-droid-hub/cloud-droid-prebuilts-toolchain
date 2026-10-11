@@ -307,7 +307,7 @@ func Current() Spec {
 				Want:    []string{"rustdoc 1.97.1"},
 				Machine: ELFAMD64,
 			}},
-		}, aosp15(), appSDK(), bash53(), python314()},
+		}, aosp15(), sdk37(), bash53(), python314()},
 	}
 }
 

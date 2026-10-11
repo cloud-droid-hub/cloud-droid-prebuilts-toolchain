@@ -23,7 +23,7 @@
 - JDK固定为Temurin 21 LTS `21.0.12.1+1`，裁剪构建配置为`jdk21-build-v1`，安装目录为`jdk21/`。保留所有运行模块、原版程序、`ct.sym`、JNI头文件、配置和许可证，只移除`jmods/`、`man/`与`lib/src.zip`。本仓`jdk-trim/`从固定摘要的完整上游包或原始分片自动生成及核验归档，不使用手工删除后的目录作输入；需要JDK模块链接时另外提供完整上游包中的`jmods/`。
 - Bazel固定为`8.5.1`，三个宿主目录都从本仓归档安装对应原生程序，构建时不得在线下载或改用系统Bazel。
 - AOSP15接口生成工具固定为`android-15.0.0_r36`的AIDL与HIDL，统一安装到`aosp15/`。macOS仅保留原始通用程序的arm64部分，Linux沿用对应宿主原始字节；运行库、来源元数据和许可证随包发布。
-- 系统、HAL与源码App构建共用`sdkapp37/`这一套Android SDK，保持标准SDK根布局，归档为`payload/sdkapp37/android-sdk-apps-37.0.0-<宿主>.tar.gz`分片。macOS arm64与Linux amd64包含Build Tools 34.0.0、35.0.0、35.0.1、36.0.0、37.0.0，Platform `android-34` r3、`android-35` r2、`android-36` r2、`android-37.0` r2，CMake 3.22.1与4.1.2；Linux arm64只含Build Tools 37.0.0与上述Platform，其它Build Tools版本与CMake没有登记的arm64来源。Platform android-36保留`optional/libbinder_ndk_cpp`头文件。内容只取Google仓库XML登记的官方zip，Linux arm64原生程序取已登记的Commit451 37.0.0原始字节；macOS只保留arm64部分，Linux amd64保持官方字节；官方zip缺少`package.xml`的包按官方仓库XML条目补齐。不含NDK，由主项目在构建时把登记`ndk29/`放进每次新建的SDK视图。组件内容变化时改用新的安装目录名，不原地替换已安装目录。
+- 系统、HAL与源码App构建共用`sdk37/`这一套Android SDK，保持标准SDK根布局，归档为`payload/sdk37/android-sdk-37.0.0-<宿主>.tar.gz`分片。macOS arm64与Linux amd64包含Build Tools 34.0.0、35.0.0、35.0.1、36.0.0、37.0.0，Platform `android-34` r3、`android-35` r2、`android-36` r2、`android-37.0` r2，CMake 3.22.1与4.1.2；Linux arm64只含Build Tools 37.0.0与上述Platform，其它Build Tools版本与CMake没有登记的arm64来源。Platform android-36保留`optional/libbinder_ndk_cpp`头文件。内容只取Google仓库XML登记的官方zip，Linux arm64原生程序取已登记的Commit451 37.0.0原始字节；macOS只保留arm64部分，Linux amd64保持官方字节；官方zip缺少`package.xml`的包按官方仓库XML条目补齐。不含NDK，由主项目在构建时把登记`ndk29/`放进每次新建的SDK视图。组件内容变化时改用新的安装目录名，不原地替换已安装目录。
 - Rust、Cargo与Rustdoc固定为`1.97.1`，Rustc内部LLVM固定为`22.1.6`，三个宿主目录都包含`aarch64-linux-android`标准库。构建时必须从本仓`rust197/`安装，不得调用rustup联网安装、改用系统Rust或静默回退。
 - Bash固定为`5.3.15(1)-release`，安装到`bash53/`。三个宿主程序取`feicong/bash-static`成功构建的原始字节；Linux为无解释器、无动态依赖的静态ELF，macOS为arm64 Mach-O并使用系统运行库。随包保留GNU GPLv3，Linux另外保留musl许可证。`install`和`check`可用`--component bash53`仅处理Bash，供主项目的POSIX冷启动入口安装项目解释器，不能回退到系统Bash。
 
@@ -41,6 +41,7 @@
 - 每个归档和分片必须在对应宿主目录的类型化Go目录中登记大小与SHA-256。不得新增JSON、YAML或TOML静态配置。
 - `<host>/bin/cdh-toolchain`必须是对应宿主的原生静态Go程序。它从`--repo`指定的宿主目录读取分片，在目标父目录内创建暂存目录，校验后原子发布。
 - 初始化遇到没有`cdh-jdk-trim.txt`的旧`jdk21/`时，先展开并完整核验登记JDK候选，再通过目录句柄原子换位；旧目录保持内容、权限及身份，保存在安装根的`jdk21-original/`。已有备份、损坏裁剪标记、归档或候选不符时拒绝，不覆盖或删除原件。
+- 初始化完整核验已有`sdkapp37/`后，通过目录句柄原子迁移至`sdk37/`，保留其内容及身份。已有不符合完整SDK登记的`sdk37/`时保存在`sdk37-original/`；已有备份、损坏输入或两个有效安装时拒绝，不删除或覆盖原件。
 - 安装目录统一为`0755`，普通静态文件统一为`0644`，可执行文件统一为`0755`。许可证与上游通知不得裁掉。
 - 禁止使用系统`/tmp`或其它仓外临时目录。构建与验证暂存内容只放本仓`build/`或`output/`。
 

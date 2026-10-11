@@ -13,8 +13,8 @@ func lookup(host, comp string) (spec, error) {
 			return llvmMac(), nil
 		}
 		return llvmLinux(host), nil
-	case "sdkapp37":
-		return sdkApp(host), nil
+	case "sdk37":
+		return sdk37(host), nil
 	case "ndk29":
 		return ndk29(host), nil
 	case "aosp15":

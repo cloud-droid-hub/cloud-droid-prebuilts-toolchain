@@ -26,6 +26,10 @@ func moveNew(from *os.File, name string, root *os.File) error {
 	return unix.RenameatxNp(int(from.Fd()), name, int(root.Fd()), name, unix.RENAME_EXCL)
 }
 
+func moveAs(root *os.File, from, dest string) error {
+	return unix.RenameatxNp(int(root.Fd()), from, int(root.Fd()), dest, unix.RENAME_EXCL)
+}
+
 func fdAlias(file *os.File) string {
 	return "/dev/fd/" + strconv.FormatUint(uint64(file.Fd()), 10)
 }

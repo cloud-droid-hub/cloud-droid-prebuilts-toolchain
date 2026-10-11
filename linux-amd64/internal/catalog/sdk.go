@@ -1,32 +1,32 @@
 // Copyright (c) 2025-2026 fei_cong(https://github.com/feicong/feicong-course)
 package catalog
 
-// appSDK发布系统、HAL与源码App共用的Android SDK组件：Build Tools 34.0.0、35.0.0、35.0.1、36.0.0、37.0.0，
+// sdk37发布系统、HAL与源码App共用的Android SDK组件：Build Tools 34.0.0、35.0.0、35.0.1、36.0.0、37.0.0，
 // Platform android-34 r3、android-35 r2、android-36 r2、android-37.0 r2，CMake 3.22.1与4.1.2，保持标准SDK根布局。
-// 内容取自Google仓库XML登记的官方zip，原生程序只保留官方通用程序的arm64部分，裁掉RenderScript、链接器脚本、
-// 仅x86_64的运行库、界面皮肤与模板、框架资源和源码jar；platforms/android-37.0与两个CMake的官方zip
-// 没有package.xml，按官方仓库XML的条目补齐。
-func appSDK() Archive {
+// 内容取自Google仓库XML登记的官方Linux zip，原生程序保持官方x86-64字节，裁掉RenderScript、链接器脚本、
+// 界面皮肤与模板、框架资源、源码jar和CMake里只含ppc与i386的CPack模板；Build Tools的Linux zip、
+// platforms/android-37.0与两个CMake的官方zip没有package.xml，按官方仓库XML的条目补齐。
+func sdk37() Archive {
 	return Archive{
-		Name: "Android SDK", Version: "37.0.0", Dir: "sdkapp37",
+		Name: "Android SDK", Version: "37.0.0", Dir: "sdk37",
 		Format: TarGzip, Prefix: "android-sdk",
-		SHA256: "0b1196706226209f8c70fcbaffb878fea4bd88a9a7ea06e4bde0a1fdef0a37d8",
+		SHA256: "7f17aa46e3f96aa86646125c5ad6d1da8d0b92e99983ccb0e1fa345a4bbbc44b",
 		Parts: []Part{{
-			Path: "payload/sdkapp37/android-sdk-apps-37.0.0-darwin-arm64.tar.gz.part-000",
-			Size: 94371840, SHA256: "3e39bfd9d9b2d883b9598c746f138c0cab1f9c0b235b31b32b1ae14d738a77d4",
+			Path: "payload/sdk37/android-sdk-37.0.0-linux-amd64.tar.gz.part-000",
+			Size: 94371840, SHA256: "d2c97069b64f1c068086f01f472a704c2adc5ab19ef6677b24ebce4eaa6daa65",
 		}, {
-			Path: "payload/sdkapp37/android-sdk-apps-37.0.0-darwin-arm64.tar.gz.part-001",
-			Size: 94371840, SHA256: "b6be42caa13aa108a7bfe56b05246d242148a0527b6604c29c52e0316f852109",
+			Path: "payload/sdk37/android-sdk-37.0.0-linux-amd64.tar.gz.part-001",
+			Size: 94371840, SHA256: "a88158c9478c64b2a4b0e9ac8ecbede884fd05065a778c6174038df831ff69ad",
 		}, {
-			Path: "payload/sdkapp37/android-sdk-apps-37.0.0-darwin-arm64.tar.gz.part-002",
-			Size: 31083827, SHA256: "2add27beaa93bb052caf65856e9b27138f9daa26345d51747b006d71724f90ac",
+			Path: "payload/sdk37/android-sdk-37.0.0-linux-amd64.tar.gz.part-002",
+			Size: 51473541, SHA256: "ea8bc9892a963c6d986174fbd2415016de677f9ce34bd5f32977d91ed8a79bd8",
 		}},
 		Files: []FileCheck{{
-			Path: "build-tools/37.0.0/aidl", Size: 3425904,
-			SHA256: "b1ccd59cf4e3ca35826b2ddfb112fa222adc7835bc478c71fabed73106551f93",
+			Path: "build-tools/37.0.0/aidl", Size: 3754432,
+			SHA256: "a4ad150a7cf6ea297c299cb779da7a58c537cfc07923d1e15ccbc554a30cd4ba",
 		}, {
-			Path: "build-tools/37.0.0/zipalign", Size: 276528,
-			SHA256: "2f5e81c48421a4a2af6d62883f3b57ec6643a4d2430561c83940a2bd2078ad06",
+			Path: "build-tools/37.0.0/zipalign", Size: 256480,
+			SHA256: "0859ed6e59d3ded7519cd6e6409c0d9ce914af0e09dadc2dce7965ee2e991852",
 		}, {
 			Path: "build-tools/37.0.0/d8", Size: 2678,
 			SHA256: "b773a721be3d4988dea9660815a9e441b76100e5b0f5c72b5893cfadadc76c6f",
@@ -40,8 +40,8 @@ func appSDK() Archive {
 			Path: "build-tools/37.0.0/lib/apksigner.jar", Size: 1181416,
 			SHA256: "2defad215d7ff52968a409cde528cdaef7918b115e276b8e3378ca7a178e4180",
 		}, {
-			Path: "build-tools/37.0.0/lib64/libc++.dylib", Size: 1319696,
-			SHA256: "c2ec753b9b12b0eae72acd0d72a50586e40235149335ab403805a85e6fe35e59",
+			Path: "build-tools/37.0.0/lib64/libc++.so", Size: 1545448,
+			SHA256: "9d4c9036e8eca07cb7cf161128c362e8e5550ede7cd7f99078d559c14a5fdf9a",
 		}, {
 			Path: "platforms/android-36/optional/libbinder_ndk_cpp/android/binder_interface_utils.h", Size: 13955,
 			SHA256: "9898e1d9b7e35072cc411a4ef419d1fa2d498b356e1c45943b23381497b8e8e3",
@@ -70,6 +70,26 @@ func appSDK() Archive {
 			Path: "build-tools/37.0.0/source.properties", Size: 38,
 			SHA256: "fbd87c8567afbc6dc78e140097fcde234f4a61fa7065e85081d43e442ccd3d24",
 			Want:   []string{"Pkg.Revision=37.0.0"},
+		}, {
+			Path: "build-tools/34.0.0/package.xml", Size: 17721,
+			SHA256: "30593a2569b3a72558cd6bfdb0a46e67542990d9ba0e36f8ba523d2dc63a84d3",
+			Want:   []string{`path="build-tools;34.0.0"`},
+		}, {
+			Path: "build-tools/35.0.0/package.xml", Size: 17721,
+			SHA256: "f7ab2d7deab011f8e44f70bb37f8c2cdb6a43eaa00c3f2a59ea1837f88537af1",
+			Want:   []string{`path="build-tools;35.0.0"`},
+		}, {
+			Path: "build-tools/35.0.1/package.xml", Size: 17725,
+			SHA256: "1b998ea6be372881d6ed64c4aacd378332357a2c84d903225085f11fe05fe7f2",
+			Want:   []string{`path="build-tools;35.0.1"`},
+		}, {
+			Path: "build-tools/36.0.0/package.xml", Size: 17721,
+			SHA256: "d3ab816d09cc2db0a82ef1a4a0479271d2a9c7d76fb4f1731691d00b44539a6f",
+			Want:   []string{`path="build-tools;36.0.0"`},
+		}, {
+			Path: "build-tools/37.0.0/package.xml", Size: 17721,
+			SHA256: "139c451f0b0309b5af0ddbad8bf81b537e4ec36243472a9bab81ddca17d1b3de",
+			Want:   []string{`path="build-tools;37.0.0"`},
 		}, {
 			Path: "platforms/android-34/source.properties", Size: 256,
 			SHA256: "a2e2cf71d36c90fb1a2ab5af9d0cad186e4604147f3fb37416c214881bf58489",
@@ -119,42 +139,39 @@ func appSDK() Archive {
 			Path: "platforms/android-37.0/android.jar", Size: 43044472,
 			SHA256: "bf1b4387cc7ca94fc6ef684f040d9d16fbf16248e181819f020736ea2053f177",
 		}, {
-			Path: "build-tools/34.0.0/aapt2", Size: 4932032,
-			SHA256: "261b4fa1ed366f0ffb26c73f7e87135f09394ddf83c4c8ab303aee0f63c2b208",
+			Path: "build-tools/34.0.0/aapt2", Size: 6076216,
+			SHA256: "760aa057e89e3940c3e944e6bec61eda864ade42fd9c0a3113735e329657705f",
 		}, {
-			Path: "build-tools/35.0.0/aapt2", Size: 5013376,
-			SHA256: "564e452dab309d88eacc1b467613b346b2fc37af00dbe9e315a96f1b243be555",
+			Path: "build-tools/35.0.0/aapt2", Size: 6299424,
+			SHA256: "d1096e11aba9c974644369ee3c50d239acac3f3428ffa928e5b9c14dfb7a57de",
 		}, {
-			Path: "build-tools/35.0.1/aapt2", Size: 5013376,
-			SHA256: "72c945f4a7e7bc5dd9a8b49b5ba207cf052a1fbe3f2b580b1ceee95c01694055",
+			Path: "build-tools/35.0.1/aapt2", Size: 6299424,
+			SHA256: "5bca541bb691be2783137821b4304beabdf02daacd159ae56e1a4a3a52980637",
 		}, {
-			Path: "build-tools/36.0.0/aapt2", Size: 5160880,
-			SHA256: "7d758f52b737942d8885dd35fab5df5b3488b8ddc5f951a36d261780bd715858",
+			Path: "build-tools/36.0.0/aapt2", Size: 5735384,
+			SHA256: "1a6a396b9cd071f7040071fdd108718cb98c3c9f4960044f373b288993d19eb7",
 		}, {
-			Path: "build-tools/37.0.0/aapt2", Size: 5440544,
-			SHA256: "43d128fcb2d8555bbb27a626d8d29250abd17db7d96acc346b9dfc2aa70d1f0e",
+			Path: "build-tools/37.0.0/aapt2", Size: 6274200,
+			SHA256: "0f1c0e560f99db510a76ebc99ad5c3e68438f62e8e8617018a716ca4a589a699",
 		}, {
-			Path: "cmake/3.22.1/bin/cmake", Size: 9017680,
-			SHA256: "41b41ce6d6192620c6fe4497fa9816e866d34f712f12b44e7c5dbe9078324cf9",
+			Path: "cmake/3.22.1/bin/cmake", Size: 14435544,
+			SHA256: "c8c39aee0443330e9b1866e1d85cc2405a4eec5dfbb468c5017c3eaecb4964f5",
 		}, {
-			Path: "cmake/4.1.2/bin/cmake", Size: 11081856,
-			SHA256: "a72790d32940184e49e5535ba4bb2d6e59ed0981ff6fdf5096f850dd44effc4f",
+			Path: "cmake/4.1.2/bin/cmake", Size: 21443392,
+			SHA256: "7f9c6c6df5774621b6dbd749402f27d5404bc47ad6eb4fdc855aceb66f1d05ef",
 		}},
 		Probes: []Probe{{
-			Path: "build-tools/34.0.0/aapt2", Args: []string{"version"},
-			Want: []string{"Android Asset Packaging Tool (aapt) 2.19-10229193"}, Machine: MachARM64,
-		}, {
 			Path: "build-tools/37.0.0/aapt2", Args: []string{"version"},
-			Want: []string{"Android Asset Packaging Tool (aapt) 2.20-15087165"}, Machine: MachARM64,
+			Want: []string{"Android Asset Packaging Tool (aapt) 2."}, Machine: ELFAMD64,
 		}, {
 			Path: "build-tools/37.0.0/aidl", Args: []string{"--help"},
-			Want: []string{"AIDL Compiler: built for platform SDK version 37"}, Machine: MachARM64,
+			Want: []string{"AIDL Compiler:"}, Machine: ELFAMD64,
 		}, {
 			Path: "cmake/3.22.1/bin/cmake", Args: []string{"--version"},
-			Want: []string{"cmake version 3.22.1"}, Machine: MachARM64,
+			Want: []string{"cmake version 3.22.1"}, Machine: ELFAMD64,
 		}, {
 			Path: "cmake/4.1.2/bin/cmake", Args: []string{"--version"},
-			Want: []string{"cmake version 4.1.2"}, Machine: MachARM64,
+			Want: []string{"cmake version 4.1.2"}, Machine: ELFAMD64,
 		}},
 	}
 }

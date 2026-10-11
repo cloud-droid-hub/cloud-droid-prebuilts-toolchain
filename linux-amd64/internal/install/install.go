@@ -97,6 +97,15 @@ func RunTo(ctx context.Context, repo, dest string, spec catalog.Spec, output io.
 		if err := matchRoot(root, dest); err != nil {
 			return err
 		}
+		renamed, renameErr := renameSDK(ctx, root, archive)
+		if renameErr != nil {
+			return fmt.Errorf("rename SDK: %w", renameErr)
+		}
+		if renamed {
+			if _, err := fmt.Fprintln(output, "renamed verified SDK to "+filepath.Join(dest, archive.Dir)); err != nil {
+				return err
+			}
+		}
 		component, openErr := openDir(root, archive.Dir)
 		if openErr == nil {
 			checkErr := checkComp(ctx, component, archive)

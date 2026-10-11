@@ -41,7 +41,7 @@ func TestCatalog(t *testing.T) {
 		t.Fatalf("archive=%+v", archive)
 	}
 	archive = spec.Archives[7]
-	if archive.Name != "Android SDK" || archive.Version != "37.0.0" || archive.Dir != "sdkapp37" {
+	if archive.Name != "Android SDK" || archive.Version != "37.0.0" || archive.Dir != "sdk37" {
 		t.Fatalf("archive=%+v", archive)
 	}
 	if err := Valid(spec); err != nil {

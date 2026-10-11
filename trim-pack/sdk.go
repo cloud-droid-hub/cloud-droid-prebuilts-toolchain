@@ -26,8 +26,8 @@ var cmakeInputs = []sdkInput{
 	{"cmake-4.1.2-darwin.zip", "cmake-4.1.2-linux.zip", "130b80221abda282b96e3669cef5dccf0d916e988e08051f5daccdd03360a1ac", "46bda18f0f3c28a55f88da4ba05fec21abe3d9bca0a78a8b18d444987b3dc817", "4.1.2", "", ""},
 }
 
-func sdkApp(host string) spec {
-	plan := spec{Host: host, Comp: "sdkapp37", Prefix: "android-sdk"}
+func sdk37(host string) spec {
+	plan := spec{Host: host, Comp: "sdk37", Prefix: "android-sdk"}
 	if host == "darwin-arm64" {
 		plan.OldSHA = "0b1196706226209f8c70fcbaffb878fea4bd88a9a7ea06e4bde0a1fdef0a37d8"
 	} else if host == "linux-arm64" {

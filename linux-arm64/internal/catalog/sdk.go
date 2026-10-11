@@ -1,21 +1,21 @@
 // Copyright (c) 2025-2026 fei_cong(https://github.com/feicong/feicong-course)
 package catalog
 
-// appSDK发布系统、HAL与源码App共用的Android SDK组件在本宿主的可登记部分：Build Tools 37.0.0与Platform
+// sdk37发布系统、HAL与源码App共用的Android SDK组件在本宿主的可登记部分：Build Tools 37.0.0与Platform
 // android-34 r3、android-35 r2、android-36 r2、android-37.0 r2，保持标准SDK根布局。Google不发布Linux arm64
 // 原生程序：Build Tools 37.0.0的aapt2、aidl、zipalign取已登记的Commit451 android-arm-build-tools
 // 37.0.0归档原始字节，其余文件取官方Linux zip；Build Tools 34.0.0至36.0.0与CMake没有登记的arm64来源，不在归档内。
 // Build Tools的Linux zip与platforms/android-37.0没有package.xml，按官方仓库XML的条目补齐。
-func appSDK() Archive {
+func sdk37() Archive {
 	return Archive{
-		Name: "Android SDK", Version: "37.0.0", Dir: "sdkapp37",
+		Name: "Android SDK", Version: "37.0.0", Dir: "sdk37",
 		Format: TarGzip, Prefix: "android-sdk",
 		SHA256: "2924de75063ebf0e17f0409f2ddd0913ae5176f8c569aed4735bd31b6397a561",
 		Parts: []Part{{
-			Path: "payload/sdkapp37/android-sdk-apps-37.0.0-linux-arm64.tar.gz.part-000",
+			Path: "payload/sdk37/android-sdk-37.0.0-linux-arm64.tar.gz.part-000",
 			Size: 94371840, SHA256: "d6468af49de580d333750b6a78362a0d4621e8a0bd69bdd67abaf13c643ef999",
 		}, {
-			Path: "payload/sdkapp37/android-sdk-apps-37.0.0-linux-arm64.tar.gz.part-001",
+			Path: "payload/sdk37/android-sdk-37.0.0-linux-arm64.tar.gz.part-001",
 			Size: 38240037, SHA256: "7f0d2050f085049013b1e8667e8cd87c87e1791f34a4a0b89389a1d0150a411e",
 		}},
 		Files: []FileCheck{{

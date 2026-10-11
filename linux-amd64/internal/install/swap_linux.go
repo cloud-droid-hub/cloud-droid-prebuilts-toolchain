@@ -25,6 +25,10 @@ func moveNew(from *os.File, name string, root *os.File) error {
 	return unix.Renameat2(int(from.Fd()), name, int(root.Fd()), name, unix.RENAME_NOREPLACE)
 }
 
+func moveAs(root *os.File, from, dest string) error {
+	return unix.Renameat2(int(root.Fd()), from, int(root.Fd()), dest, unix.RENAME_NOREPLACE)
+}
+
 func fdAlias(file *os.File) string {
 	return "/proc/self/fd/" + strconv.FormatUint(uint64(file.Fd()), 10)
 }
