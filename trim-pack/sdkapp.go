@@ -59,8 +59,7 @@ func sdkApp(host string) spec {
 			for _, name := range []string{"aapt", "aapt2", "aidl", "dexdump", "split-select", "zipalign", "lib64"} {
 				in.Drop = append(in.Drop, name)
 			}
-			arm := sdk37(host).Inputs[1]
-			plan.Inputs = append(plan.Inputs, arm)
+			plan.Inputs = append(plan.Inputs, armSDK())
 		}
 		plan.Inputs = append(plan.Inputs, in)
 		display := "Android SDK Build-Tools " + strings.Split(src.Ver, ".")[0]
@@ -107,4 +106,14 @@ func sdkApp(host string) spec {
 		}
 	}
 	return plan
+}
+
+func armSDK() input {
+	arm := input{Name: "android-build-tools-37.0.0-linux-arm64-20260618.tar.xz", Kind: "tar.xz",
+		SHA256: "29b1fa192c005d42c228b6ad0f0ad29161453be324308c3bfaa5783c7f76fddc"}
+	for _, name := range []string{"aapt2", "aidl", "zipalign"} {
+		arm.Rules = append(arm.Rules, rule{From: name, To: "build-tools/37.0.0/" + name, Exec: true})
+	}
+	arm.Rules = append(arm.Rules, rule{From: "MANIFEST.txt", To: "build-tools/37.0.0/ARM64-MANIFEST.txt"})
+	return arm
 }

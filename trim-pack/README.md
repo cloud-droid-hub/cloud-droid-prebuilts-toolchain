@@ -1,6 +1,6 @@
 # 现有工具链裁剪生成
 
-`trim-pack`从固定摘要的原始发行包或原版文件生成LLVM22、NDK29、SDK37、SDKApp37和AOSP15的三宿主裁剪归档。源文件、文件过滤、工具集合、保留链接、macOS arm64切片和元数据均由编译期Go定义登记。`pack`不读取现有裁剪包；只有`verify --published`可把现有包作为对照。
+`trim-pack`从固定摘要的原始发行包或原版文件生成LLVM22、NDK29、SDKApp37和AOSP15的三宿主裁剪归档。源文件、文件过滤、工具集合、保留链接、macOS arm64切片和元数据均由编译期Go定义登记。`pack`不读取现有裁剪包；只有`verify --published`可把现有包作为对照。
 
 OpenJDK使用相邻的`jdk-trim`工具。Go使用完整上游发行包；Bazel使用原版可执行程序与许可证；Rust保留官方rustc、Cargo、宿主及安卓标准库组件的完整内容，不属于文件裁剪。Linux arm64的安卓标准库由原版组件内容组装，没有该目标的安装manifest；其它组件的原版安装manifest保留。组件选择和安装元数据与内容裁剪分别核对。这些组件不套用本工具的裁剪策略。Bash的原版构建与安装由其工具链入口维护。
 
@@ -11,10 +11,10 @@ OpenJDK使用相邻的`jdk-trim`工具。Go使用完整上游发行包；Bazel�
 ```sh
 mkdir -p build/trim-inputs build/trim-result
 ./tools/build/cwd-just.sh test-trim-pack
-./tools/build/cwd-just.sh trim-pack sdk37 darwin-arm64 build/trim-inputs build/trim-result/sdk37
+./tools/build/cwd-just.sh trim-pack sdkapp37 darwin-arm64 build/trim-inputs build/trim-result/sdkapp37
 ```
 
-五个组件统一使用同一参数顺序，宿主为`darwin-arm64`、`linux-arm64`或`linux-amd64`。最后一个可选参数为当前组件分片目录：
+四个组件统一使用同一参数顺序，宿主为`darwin-arm64`、`linux-arm64`或`linux-amd64`。最后一个可选参数为当前组件分片目录：
 
 ```sh
 ./tools/build/cwd-just.sh trim-pack ndk29 linux-arm64 build/trim-inputs build/trim-result/ndk29 \

@@ -206,8 +206,8 @@ if [[ "$command_name" == require || "$command_name" == require-env ]]; then
   check_path NDK_HOME "${canonical_dest}/ndk29"
   # Android SDK组件由宿主justfile导出；容器镜像环境未登记该组件，保持原有检查范围。
   if (( ! inside_container )); then
-    check_path ANDROID_HOME "${canonical_dest}/sdk37"
-    check_path ANDROID_SDK_ROOT "${canonical_dest}/sdk37"
+    check_path ANDROID_HOME "${canonical_dest}/sdkapp37"
+    check_path ANDROID_SDK_ROOT "${canonical_dest}/sdkapp37"
   fi
   android_bin="${canonical_dest}/llvm22/bin"
   if (( inside_container )); then
@@ -328,8 +328,8 @@ if [[ "$command_name" == env || "$command_name" == path ]]; then
   write_env ANDROID_NDK_HOME "${dest}/ndk29"
   write_env ANDROID_NDK_ROOT "${dest}/ndk29"
   write_env NDK_HOME "${dest}/ndk29"
-  write_env ANDROID_HOME "${dest}/sdk37"
-  write_env ANDROID_SDK_ROOT "${dest}/sdk37"
+  write_env ANDROID_HOME "${dest}/sdkapp37"
+  write_env ANDROID_SDK_ROOT "${dest}/sdkapp37"
   android_bin="${dest}/llvm22/bin"
   if (( inside_container )); then
     android_bin="${dest}/selected/bin"

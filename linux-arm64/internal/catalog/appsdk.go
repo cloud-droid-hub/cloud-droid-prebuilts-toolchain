@@ -1,14 +1,14 @@
 // Copyright (c) 2025-2026 fei_cong(https://github.com/feicong/feicong-course)
 package catalog
 
-// appSDK发布主项目源码App构建使用的Android SDK组件在本宿主的可登记部分：Build Tools 37.0.0与Platform
+// appSDK发布系统、HAL与源码App共用的Android SDK组件在本宿主的可登记部分：Build Tools 37.0.0与Platform
 // android-34 r3、android-35 r2、android-36 r2、android-37.0 r2，保持标准SDK根布局。Google不发布Linux arm64
-// 原生程序：Build Tools 37.0.0的aapt2、aidl、zipalign与sdk37相同，取已登记的Commit451 android-arm-build-tools
+// 原生程序：Build Tools 37.0.0的aapt2、aidl、zipalign取已登记的Commit451 android-arm-build-tools
 // 37.0.0归档原始字节，其余文件取官方Linux zip；Build Tools 34.0.0至36.0.0与CMake没有登记的arm64来源，不在归档内。
 // Build Tools的Linux zip与platforms/android-37.0没有package.xml，按官方仓库XML的条目补齐。
 func appSDK() Archive {
 	return Archive{
-		Name: "Android SDK for source apps", Version: "37.0.0", Dir: "sdkapp37",
+		Name: "Android SDK", Version: "37.0.0", Dir: "sdkapp37",
 		Format: TarGzip, Prefix: "android-sdk",
 		SHA256: "2924de75063ebf0e17f0409f2ddd0913ae5176f8c569aed4735bd31b6397a561",
 		Parts: []Part{{
@@ -19,6 +19,26 @@ func appSDK() Archive {
 			Size: 38240037, SHA256: "7f0d2050f085049013b1e8667e8cd87c87e1791f34a4a0b89389a1d0150a411e",
 		}},
 		Files: []FileCheck{{
+			Path: "build-tools/37.0.0/d8", Size: 2678,
+			SHA256: "b773a721be3d4988dea9660815a9e441b76100e5b0f5c72b5893cfadadc76c6f",
+		}, {
+			Path: "build-tools/37.0.0/apksigner", Size: 2959,
+			SHA256: "b47549e373b895ce6ca620d0c7887e674d9615ffa837a86ac601dcfd04adb0f0",
+		}, {
+			Path: "build-tools/37.0.0/lib/d8.jar", Size: 20528803,
+			SHA256: "a26ee56252adcff6752c379ae255a0ad538ebec60189e078ec6855487107637d",
+		}, {
+			Path: "build-tools/37.0.0/lib/apksigner.jar", Size: 1181416,
+			SHA256: "2defad215d7ff52968a409cde528cdaef7918b115e276b8e3378ca7a178e4180",
+		}, {
+			Path: "platforms/android-36/optional/libbinder_ndk_cpp/android/binder_interface_utils.h", Size: 13955,
+			SHA256: "9898e1d9b7e35072cc411a4ef419d1fa2d498b356e1c45943b23381497b8e8e3",
+			Want:   []string{"asBinderReference"},
+		}, {
+			Path: "platforms/android-36/optional/libbinder_ndk_cpp/android/binder_auto_utils.h", Size: 13362,
+			SHA256: "8de4018f17330e3cb68eacd66ef2f10da19ae22b2da0e7f6f6ad4d100607a5f4",
+			Want:   []string{"class SpAIBinder"},
+		}, {
 			Path: "build-tools/37.0.0/source.properties", Size: 38,
 			SHA256: "fbd87c8567afbc6dc78e140097fcde234f4a61fa7065e85081d43e442ccd3d24",
 			Want:   []string{"Pkg.Revision=37.0.0"},
