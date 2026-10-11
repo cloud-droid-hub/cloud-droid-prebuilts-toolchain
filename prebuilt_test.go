@@ -27,7 +27,7 @@ func tcTree(t *testing.T) (string, string) {
 	t.Helper()
 	root := t.TempDir()
 	tcCopy(t, "use-prebuilt.sh", filepath.Join(root, "toolchains", "use-prebuilt.sh"))
-	tcCopy(t, filepath.Join("..", "build", "git-worktree.sh"),
+	tcCopy(t, filepath.Join("..", "tools", "build", "git-worktree.sh"),
 		filepath.Join(root, "tools", "build", "git-worktree.sh"))
 
 	repo := filepath.Join(root, "toolchains")
