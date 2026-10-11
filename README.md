@@ -18,6 +18,8 @@ linux-amd64/
 
 每个目录包含自己的安装程序、类型化归档目录、分片、许可证与测试。仓库统一版本由根目录[version.go](version.go)维护，三个宿主共同遵守根目录[AGENTS.md](AGENTS.md)。平台目录固定发布Go 1.26.8、LLVM 22、Temurin JDK 21.0.12.1+1、Android NDK r29 revision 29.0.14206865、Bazel 8.5.1和Rust/Cargo/Rustdoc 1.97.1。macOS LLVM 22为22.1.8，Linux LLVM 22为Ubuntu 26.04的22.1.2；NDK内Clang与LLD主版本为21，Rust内部LLVM为22.1.6。三个宿主目录都包含`aarch64-linux-android`标准库。
 
+只读组件的身份文件允许普通硬链接及组件内部的相对符号链接。检查固定打开后的真实普通文件，再核对登记大小与SHA-256；程序继续执行原生架构和版本探针。越出组件的链接、非普通文件和内容篡改仍失败，安装发布目标及模块边界文件保持独立校验。
+
 归档以不超过90 MiB的普通Git对象保存，不使用Git LFS。`<host>/bin/cdh-toolchain`负责摘要校验、安全展开、宿主架构检查和逐组件原子发布。主项目把本仓放在`toolchains/`，再把当前宿主工具展开到`output/toolchains/<host>/`；缺失、版本错误或架构不符都会直接失败，不会改用系统工具。
 
 本仓同时维护环境与安装包装脚本、AIDL构建输入、ARM数据与源码工具以及LLVM、JDK、Python裁剪器。组件根Go模块覆盖包装入口的行为测试及`python-trim/`，三个宿主安装器和其它生成器保持独立模块。生成器通过相对路径使用主仓的`pkg/devicekit`工作根接口；主仓正式入口负责绑定临时目录及离线依赖，普通源码包按相同布局使用，无需Git元数据。

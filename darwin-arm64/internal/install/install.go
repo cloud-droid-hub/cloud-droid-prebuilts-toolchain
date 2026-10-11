@@ -523,7 +523,7 @@ func checkComp(ctx context.Context, root *os.File, archive catalog.Archive) erro
 		return fmt.Errorf("toolchain directory is invalid: %s", archive.Dir)
 	}
 	for _, check := range archive.Files {
-		file, err := openRel(root, check.Path, false)
+		file, err := openRel(root, check.Path, true)
 		if err != nil {
 			return fmt.Errorf("invalid identity file for %s: %w", archive.Name, err)
 		}

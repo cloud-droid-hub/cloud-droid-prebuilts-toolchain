@@ -522,6 +522,51 @@ func TestFileLink(t *testing.T) {
 	}
 }
 
+func TestIdLink(t *testing.T) {
+	for _, kind := range []string{"sym", "hard"} {
+		t.Run(kind, func(t *testing.T) {
+			spec, repo := makeSample(t)
+			body := []byte("#!/bin/sh\necho go1.26.8\n")
+			spec.Archives[0].Files = []catalog.FileCheck{{
+				Path: "bin/go", Size: int64(len(body)), SHA256: sumHex(body),
+			}}
+			dest := filepath.Join(t.TempDir(), "tools")
+			if err := Run(context.Background(), repo, dest, spec); err != nil {
+				t.Fatal(err)
+			}
+			entry := filepath.Join(dest, "go126", "go-link")
+			target := filepath.Join(dest, "go126", "bin", "go")
+			if kind == "hard" {
+				if err := os.Remove(entry); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Link(target, entry); err != nil {
+					t.Fatal(err)
+				}
+			}
+			spec.Archives[0].Files[0].Path = "go-link"
+			before, err := os.Stat(target)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := Check(context.Background(), dest, spec); err != nil {
+				t.Fatalf("normal identity link rejected: %v", err)
+			}
+			after, err := os.Stat(target)
+			if err != nil || !os.SameFile(before, after) || before.Mode() != after.Mode() ||
+				before.Size() != after.Size() || before.ModTime() != after.ModTime() {
+				t.Fatalf("read-only identity changed: %v", err)
+			}
+			if err := os.WriteFile(target, []byte("#!/bin/sh\necho go1.26.9\n"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := Check(context.Background(), dest, spec); err == nil {
+				t.Fatal("changed linked identity accepted")
+			}
+		})
+	}
+}
+
 func TestFileOnly(t *testing.T) {
 	spec, repo := makeSample(t)
 	script := []byte("#!/bin/sh\necho go1.26.8\n")
