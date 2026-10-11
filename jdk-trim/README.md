@@ -18,25 +18,26 @@
 
 ## 正式命令
 
-在主仓根目录执行，`source`与`dest`均由调用者明确提供。先把完整上游包放到职责内的`build/`目录，输出父目录必须已存在且属于当前用户；`pack`只创建全新的目标目录，保留已有目标。下面两轮使用同一份上游输入：
+在主仓根目录执行，`source`与`dest`均由调用者明确提供。完整上游包保存在主仓`output/target/common/source-archives/jdk-trim/input/`，输出父目录必须已存在且属于当前用户；`pack`只创建全新的目标目录，保留已有目标。下面两轮使用同一份上游输入：
 
 ```sh
-mkdir -p build/jdk-trim/input build/jdk-trim/output
-./tools/build/cwd-just.sh trim-jdk darwin-arm64 build/jdk-trim/input/OpenJDK21U-jdk_aarch64_mac_hotspot_21.0.12.1_1.tar.gz build/jdk-trim/output/first
-./tools/build/cwd-just.sh trim-jdk darwin-arm64 build/jdk-trim/input/OpenJDK21U-jdk_aarch64_mac_hotspot_21.0.12.1_1.tar.gz build/jdk-trim/output/second
+export CDH_TARGET=common
+mkdir -p output/target/common/source-archives/jdk-trim/input output/target/common/intermediates/jdk-trim/output
+./build/cwd-just.sh trim-jdk darwin-arm64 output/target/common/source-archives/jdk-trim/input/OpenJDK21U-jdk_aarch64_mac_hotspot_21.0.12.1_1.tar.gz output/target/common/intermediates/jdk-trim/output/first
+./build/cwd-just.sh trim-jdk darwin-arm64 output/target/common/source-archives/jdk-trim/input/OpenJDK21U-jdk_aarch64_mac_hotspot_21.0.12.1_1.tar.gz output/target/common/intermediates/jdk-trim/output/second
 ```
 
 `trim-jdk`使用登记Go构建CLI，依次执行`pack`和`verify`。CLI本身的等价入口如下，三个宿主仅更改`--host`和对应源归档：
 
 ```sh
-build/jdk-trim/jdk-trim pack --host darwin-arm64 --source build/jdk-trim/input/OpenJDK21U-jdk_aarch64_mac_hotspot_21.0.12.1_1.tar.gz --dest build/jdk-trim/output/first
-build/jdk-trim/jdk-trim verify --host darwin-arm64 --source build/jdk-trim/input/OpenJDK21U-jdk_aarch64_mac_hotspot_21.0.12.1_1.tar.gz --dest build/jdk-trim/output/first
-./tools/build/cwd-just.sh test-jdk-trim
+output/target/common/intermediates/jdk-trim/jdk-trim pack --host darwin-arm64 --source output/target/common/source-archives/jdk-trim/input/OpenJDK21U-jdk_aarch64_mac_hotspot_21.0.12.1_1.tar.gz --dest output/target/common/intermediates/jdk-trim/output/first
+output/target/common/intermediates/jdk-trim/jdk-trim verify --host darwin-arm64 --source output/target/common/source-archives/jdk-trim/input/OpenJDK21U-jdk_aarch64_mac_hotspot_21.0.12.1_1.tar.gz --dest output/target/common/intermediates/jdk-trim/output/first
+./build/cwd-just.sh test-jdk-trim
 ```
 
 每次裁剪均自动生成规范化的`tar.gz`、不超过90MiB的分片和动态`report.json`。报告记录输入摘要、裁剪配置、完整输出摘要、裁剪前后载荷大小、删除条目及每卷大小、摘要；它是本次生成的报告，不是构建配置。归档路径排序，时间戳固定为Unix epoch，UID／GID固定为0，普通文件为0644、可执行文件及目录为0755，链接转换为目标原字节的独立普通文件，全部许可证随包保留。压缩实现使用登记Go1.26.8。`verify`从固定源重新计算完整压缩字节，并核对归档、全部分片、报告和目录文件集合；输入、生成时间或目录位置以外的信息不参与输出。
 
-生成使用工作根`build/`下的独立数据缓存，完成或失败后清理；发布候选与目标处于同一父目录，通过macOS的`RENAME_EXCL`或Linux的`RENAME_NOREPLACE`原子发布，已有及并发目标不被覆盖。取消、空间低于50GiB或实际读写失败均返回非零。新对象按0644／0755创建；既有模式差异只警告。
+生成使用工作根入口绑定的主仓`output/target/common/`独立数据缓存，完成或失败后清理；发布候选与目标处于同一父目录，通过macOS的`RENAME_EXCL`或Linux的`RENAME_NOREPLACE`原子发布，已有及并发目标不被覆盖。取消、空间低于50GiB或实际读写失败均返回非零。新对象按0644／0755创建；既有模式差异只警告。
 
 ## 制品登记
 

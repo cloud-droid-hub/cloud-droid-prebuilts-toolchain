@@ -15,10 +15,10 @@ verify <input.tar.xz> <output.tar.xz> <archive-prefix> [dest=source ...]
 
 只有归档中的`bin/clang -> clang-22`和`bin/ld.lld -> lld`可以保留符号链接类型。其它符号链接和TAR硬链接条目解析到最终普通文件；不在文件系统中创建任何链接。目录别名、越界、绝对目标、循环、缺失目标、重复路径及特殊文件均拒绝。文件系统输入必须为`nlink=1`的普通文件；输出以独占创建写入并核对不同inode。暂存和输出前检查剩余空间，保留至少50GiB。
 
-使用仓内登记Go1.26.8，正式配方的持久缓存保留在主仓`build/`，普通临时根在Go执行时的实际模块目录下分配。正式测试入口为`just test-llvm-pack`，执行登记工具链检查、单元测试和静态检查，也接入主仓`test`。单独执行模块测试：
+使用仓内登记Go1.26.8，通用验证的缓存与临时文件由工作根入口绑定到主仓`output/target/common/`，模块源码目录不生成工作目录，验证结束后清理自有中间目录。正式测试入口为`just test-llvm-pack`，执行登记工具链检查、单元测试和静态检查，也接入主仓`test`。单独执行模块测试：
 
 ```sh
-tools/build/cwd-go.sh auto \
+CDH_TARGET=common ./build/cwd-go.sh auto \
   -C toolchains/llvm22-pack test -count=1 ./...
 ```
 
@@ -26,4 +26,4 @@ tools/build/cwd-go.sh auto \
 
 `TestNativeAlias`由`CDH_PACK_ROOT`显式启用，是额外的库别名诊断，包含同一进程加载多个别名。编译器、链接器及生成的程序必须先通过宿主架构检查。它不代表登记消费者验收：Linux消费者的`LIBCLANG_PATH`必须指向真实`lib/cdh`。既有诊断中macOS同进程多别名加载失败，Linux arm64外层库路径与多别名加载存在失败，日志保留在`output/llvm22-trim/regular-v2/logs/`。
 
-三平台候选的实际安装与编译由组件的[候选检查工具](../prebuilts/tools/llvm22-check/README.md)验证。本工具的普通副本测试直接执行`pack`和`verify`，核对新增条目的类型、权限、字节、来源及未登记条目拒绝；这些小型归档测试不代表完整归档、动态依赖或安全组件构建已通过。
+三平台候选的实际安装与编译由组件的[候选检查工具](../tools/llvm22-check/README.md)验证。本工具的普通副本测试直接执行`pack`和`verify`，核对新增条目的类型、权限、字节、来源及未登记条目拒绝；这些小型归档测试不代表完整归档、动态依赖或安全组件构建已通过。

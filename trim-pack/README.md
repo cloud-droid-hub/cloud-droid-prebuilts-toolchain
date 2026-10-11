@@ -9,26 +9,27 @@ OpenJDK使用相邻的`jdk-trim`工具。Go使用完整上游发行包；Bazel�
 工作目录为主仓根，先准备`--source`所需的完整原始文件。工具不下载、不调用Git，也不接受手工删文件后的目录。输出父目录须已存在，已有输出保留并明确失败。
 
 ```sh
-mkdir -p build/trim-inputs build/trim-result
-./tools/build/cwd-just.sh test-trim-pack
-./tools/build/cwd-just.sh trim-pack sdk37 darwin-arm64 build/trim-inputs build/trim-result/sdk37
+export CDH_TARGET=common
+mkdir -p output/target/common/source-archives/trim-inputs output/target/common/intermediates/trim-result
+./build/cwd-just.sh test-trim-pack
+./build/cwd-just.sh trim-pack sdk37 darwin-arm64 output/target/common/source-archives/trim-inputs output/target/common/intermediates/trim-result/sdk37
 ```
 
 四个组件统一使用同一参数顺序，宿主为`darwin-arm64`、`linux-arm64`或`linux-amd64`。最后一个可选参数为当前组件分片目录：
 
 ```sh
-./tools/build/cwd-just.sh trim-pack ndk29 linux-arm64 build/trim-inputs build/trim-result/ndk29 \
+./build/cwd-just.sh trim-pack ndk29 linux-arm64 output/target/common/source-archives/trim-inputs output/target/common/intermediates/trim-result/ndk29 \
   toolchains/linux-arm64/payload/ndk29
 ```
 
 配方先`pack`，再从相同原始输入`verify`。默认构建本工具；需要用同一个已构建程序重放时，通过绝对路径`CDH_TRIM_BIN`指定该可执行文件。两种方式都先执行正式预编译工具链检查。独立程序的三个操作如下：
 
 ```sh
-build/trim-pack/trim-pack inputs --component aosp15 --host darwin-arm64
-build/trim-pack/trim-pack pack --component aosp15 --host darwin-arm64 \
-  --source build/trim-inputs --dest build/trim-result/aosp15
-build/trim-pack/trim-pack verify --component aosp15 --host darwin-arm64 \
-  --source build/trim-inputs --dest build/trim-result/aosp15 \
+output/target/common/intermediates/trim-pack/trim-pack inputs --component aosp15 --host darwin-arm64
+output/target/common/intermediates/trim-pack/trim-pack pack --component aosp15 --host darwin-arm64 \
+  --source output/target/common/source-archives/trim-inputs --dest output/target/common/intermediates/trim-result/aosp15
+output/target/common/intermediates/trim-pack/trim-pack verify --component aosp15 --host darwin-arm64 \
+  --source output/target/common/source-archives/trim-inputs --dest output/target/common/intermediates/trim-result/aosp15 \
   --published toolchains/darwin-arm64/payload/aosp15
 ```
 
@@ -46,7 +47,7 @@ build/trim-pack/trim-pack verify --component aosp15 --host darwin-arm64 \
 
 Linux LLVM的DEB输入以[Ubuntu快照](https://snapshot.ubuntu.com/)的固定时间路径登记；快照缺少的已登记Z3和libpfm amd64包使用官方ports/archive地址，仍以固定摘要校验。amd64的libedit与GnuTLS使用登记的Ubuntu 24.04版本，其余为Ubuntu 26.04版本。原始输入可以离线保存；来源服务器不再提供某版本时不能换包后继续。
 
-Linux LLVM生成会在职责内`build/`工作目录，从固定源码编译原生patchelf。编译器来自绝对路径`CDH_TOOLCHAIN_ROOT/llvm22/bin/clang++`，须为LLVM22；链接使用同套LLD22。macOS使用出厂`xcrun`提供的SDK，C++、ABI与unwind来自登记LLVM；源码及子进程临时目录均绑定本轮工作根。patchelf对动态ELF文件逐项执行`--set-rpath`，内容为`$ORIGIN`加当前文件目录到`lib/cdh`的相对路径。arm64保留`DT_RUNPATH`；amd64使用`--force-rpath`保留`DT_RPATH`，其中libcrypto、libssl、libedit与GnuTLS的四个登记文件保留`DT_RUNPATH`。amd64的`lib/cdh/`下libLLVM、libclang和libclang-cpp三个登记文件先设置`$ORIGIN/cdh`，再设置最终`$ORIGIN`，同时重放现有包在`.dynstr`中留下的中间变换；其它ELF不增加该步骤。该过程可以在macOS生成两种Linux架构的归档，归档生成与Linux原生消费者运行分别验收。
+Linux LLVM生成从固定源码编译原生patchelf，工作文件由工作根入口绑定到主仓`output/target/common/`。编译器来自绝对路径`CDH_TOOLCHAIN_ROOT/llvm22/bin/clang++`，须为LLVM22；链接使用同套LLD22。macOS使用出厂`xcrun`提供的SDK，C++、ABI与unwind来自登记LLVM；源码及子进程临时目录均绑定本轮工作根。patchelf对动态ELF文件逐项执行`--set-rpath`，内容为`$ORIGIN`加当前文件目录到`lib/cdh`的相对路径。arm64保留`DT_RUNPATH`；amd64使用`--force-rpath`保留`DT_RPATH`，其中libcrypto、libssl、libedit与GnuTLS的四个登记文件保留`DT_RUNPATH`。amd64的`lib/cdh/`下libLLVM、libclang和libclang-cpp三个登记文件先设置`$ORIGIN/cdh`，再设置最终`$ORIGIN`，同时重放现有包在`.dynstr`中留下的中间变换；其它ELF不增加该步骤。该过程可以在macOS生成两种Linux架构的归档，归档生成与Linux原生消费者运行分别验收。
 
 `lib/cdh/LICENSES/PACKAGES.md`保存现有组件的完整来源表及原制品构建信息，包括原Ubuntu patchelf版本和已有宿主检查范围。生成器保留这份内容，并在当前`report.json`中记录实际重放所用的上游patchelf 0.18.0变换；该来源表不充当本轮Linux原生运行证据。
 
@@ -69,12 +70,13 @@ macOS arm64的`TestNative`读取`CDH_TRIM_NATIVE`下的`<组件>-darwin-arm64/pa
 两轮分别使用两个完整生成结果目录，测试程序只编译一次：
 
 ```sh
-export CDH_TOOLCHAIN_ROOT="$PWD/output/toolchains/darwin-arm64"
-./tools/build/cwd-go.sh auto -C toolchains/trim-pack test -c -buildvcs=false \
-  -o "$PWD/build/trim-native.test" .
-CDH_TRIM_NATIVE="$PWD/build/trim-round-1" build/trim-native.test \
+export CDH_TARGET=common
+export CDH_TOOLCHAIN_ROOT="$PWD/output/target/common/toolchains/darwin-arm64"
+./build/cwd-go.sh auto -C toolchains/trim-pack test -c -buildvcs=false \
+  -o "$PWD/output/target/common/intermediates/trim-native.test" .
+CDH_TRIM_NATIVE="$PWD/output/target/common/intermediates/trim-round-1" output/target/common/intermediates/trim-native.test \
   -test.v -test.run '^TestNative$' -test.count=1
-CDH_TRIM_NATIVE="$PWD/build/trim-round-2" build/trim-native.test \
+CDH_TRIM_NATIVE="$PWD/output/target/common/intermediates/trim-round-2" output/target/common/intermediates/trim-native.test \
   -test.v -test.run '^TestNative$' -test.count=1
 ```
 
