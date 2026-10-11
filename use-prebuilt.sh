@@ -77,7 +77,7 @@ case "$command_name" in
 esac
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-project_dir="$(cd "${script_dir}/../.." && pwd -P)"
+project_dir="$(cd "${script_dir}/.." && pwd -P)"
 host=""
 repo_root="$script_dir"
 dest=""

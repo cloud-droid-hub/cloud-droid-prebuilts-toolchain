@@ -18,7 +18,7 @@ mkdir -p build/trim-inputs build/trim-result
 
 ```sh
 ./tools/build/cwd-just.sh trim-pack ndk29 linux-arm64 build/trim-inputs build/trim-result/ndk29 \
-  tools/toolchains/linux-arm64/payload/ndk29
+  toolchains/linux-arm64/payload/ndk29
 ```
 
 配方先`pack`，再从相同原始输入`verify`。默认构建本工具；需要用同一个已构建程序重放时，通过绝对路径`CDH_TRIM_BIN`指定该可执行文件。两种方式都先执行正式预编译工具链检查。独立程序的三个操作如下：
@@ -29,7 +29,7 @@ build/trim-pack/trim-pack pack --component aosp15 --host darwin-arm64 \
   --source build/trim-inputs --dest build/trim-result/aosp15
 build/trim-pack/trim-pack verify --component aosp15 --host darwin-arm64 \
   --source build/trim-inputs --dest build/trim-result/aosp15 \
-  --published tools/toolchains/darwin-arm64/payload/aosp15
+  --published toolchains/darwin-arm64/payload/aosp15
 ```
 
 `inputs`输出以制表符分隔的文件名、SHA-256和来源URL。AOSP Gitiles的`?format=TEXT`响应是Base64，保存输入前须解码；摘要针对解码后的原始字节。其它URL的摘要针对下载文件。Google仓库XML的URL会变化，本工具只接受已登记摘要的完整副本，不能用新版XML或仅抽出的许可文本替代。
@@ -71,7 +71,7 @@ macOS arm64的`TestNative`读取`CDH_TRIM_NATIVE`下的`<组件>-darwin-arm64/pa
 
 ```sh
 export CDH_TOOLCHAIN_ROOT="$PWD/output/toolchains/darwin-arm64"
-./tools/build/cwd-go.sh auto -C tools/toolchains/trim-pack test -c -buildvcs=false \
+./tools/build/cwd-go.sh auto -C toolchains/trim-pack test -c -buildvcs=false \
   -o "$PWD/build/trim-native.test" .
 CDH_TRIM_NATIVE="$PWD/build/trim-round-1" build/trim-native.test \
   -test.v -test.run '^TestNative$' -test.count=1

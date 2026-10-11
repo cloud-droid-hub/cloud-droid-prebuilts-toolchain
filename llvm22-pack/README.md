@@ -15,11 +15,11 @@ verify <input.tar.xz> <output.tar.xz> <archive-prefix> [dest=source ...]
 
 只有归档中的`bin/clang -> clang-22`和`bin/ld.lld -> lld`可以保留符号链接类型。其它符号链接和TAR硬链接条目解析到最终普通文件；不在文件系统中创建任何链接。目录别名、越界、绝对目标、循环、缺失目标、重复路径及特殊文件均拒绝。文件系统输入必须为`nlink=1`的普通文件；输出以独占创建写入并核对不同inode。暂存和输出前检查剩余空间，保留至少50GiB。
 
-使用仓内登记Go1.26.8，正式配方的持久缓存保留在主仓`build/`，普通临时根在Go执行时的实际模块目录下分配。正式测试入口为`rtk proxy just test-llvm-pack`，执行登记工具链检查、单元测试和静态检查，也接入主仓`test`。单独执行模块测试：
+使用仓内登记Go1.26.8，正式配方的持久缓存保留在主仓`build/`，普通临时根在Go执行时的实际模块目录下分配。正式测试入口为`just test-llvm-pack`，执行登记工具链检查、单元测试和静态检查，也接入主仓`test`。单独执行模块测试：
 
 ```sh
-rtk proxy tools/build/cwd-go.sh auto \
-  -C tools/toolchains/llvm22-pack test -count=1 ./...
+tools/build/cwd-go.sh auto \
+  -C toolchains/llvm22-pack test -count=1 ./...
 ```
 
 默认测试仅使用小型归档和独立普通文件；链接拒绝测试使用归档条目或注入的文件元数据，不建立实际链接。`CDH_PACK_INPUT`与`CDH_PACK_PREFIX`可启用只读归档类型检查。

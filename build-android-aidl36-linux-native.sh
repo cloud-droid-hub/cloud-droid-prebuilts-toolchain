@@ -8,7 +8,7 @@ set -euo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 readonly script_dir
-project_root="$(cd -- "$script_dir/../.." && pwd -P)"
+project_root="$(cd -- "$script_dir/.." && pwd -P)"
 readonly project_root
 toolchain_root=""
 go_bin=""

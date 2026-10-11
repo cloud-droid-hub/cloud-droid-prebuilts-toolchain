@@ -59,7 +59,7 @@ func tcEnvOutput(t *testing.T, host string, export bool) (string, map[string]str
 		t.Fatal(err)
 	}
 	dest := filepath.Join(root, "tools with $value `name` space")
-	args := []string{filepath.Join(root, "tools", "toolchains", "use-prebuilt.sh"),
+	args := []string{filepath.Join(root, "toolchains", "use-prebuilt.sh"),
 		"env", "--host", host, "--repo-root", repo, "--dest", dest}
 	if export {
 		args = append(args, "--export")
@@ -124,7 +124,7 @@ func TestEnvPlain(t *testing.T) {
 
 func TestEnvExportBad(t *testing.T) {
 	root, repo := tcTree(t)
-	tool := filepath.Join(root, "tools", "toolchains", "use-prebuilt.sh")
+	tool := filepath.Join(root, "toolchains", "use-prebuilt.sh")
 	for _, mode := range []string{"check", "require", "require-env", "install", "revision"} {
 		cmd := exec.Command("bash", tool, mode, "--export", "--host", "darwin-arm64",
 			"--repo-root", repo, "--dest", filepath.Join(root, "dest"))

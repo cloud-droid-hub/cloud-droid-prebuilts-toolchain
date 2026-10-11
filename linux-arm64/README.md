@@ -4,7 +4,7 @@
 
 本目录由仓库唯一`main`分支维护，发布Linux arm64使用的Go 1.26.8、Temurin JDK 21.0.12.1+1、Ubuntu 26.04 LLVM 22.1.2、Android NDK r29目标输入、Bazel 8.5.1和Rust/Cargo 1.97.1。Rust内部LLVM为22.1.6，并包含`aarch64-linux-android`标准库。
 
-JDK的`jdk21-build-v1`包为75957224字节、1卷，安装目录为`jdk21trim1/`。完整上游包为205641175字节；保留完整运行模块与构建程序，移除`jmods/`、`man/`和`lib/src.zip`，保留JNI头文件及全部许可证。主仓`tools/toolchains/jdk-trim/`负责固定输入、自动裁剪和字节重放核验。制品在macOSarm64生成和核验，本轮未在Linuxarm64执行。
+JDK的`jdk21-build-v1`包为75957224字节、1卷，安装目录为`jdk21trim1/`。完整上游包为205641175字节；保留完整运行模块与构建程序，移除`jmods/`、`man/`和`lib/src.zip`，保留JNI头文件及全部许可证。主仓`toolchains/jdk-trim/`负责固定输入、自动裁剪和字节重放核验。制品在macOSarm64生成和核验，本轮未在Linuxarm64执行。
 
 NDK不包含Google发布的Linux amd64宿主程序。Android arm64编译使用同目录LLVM 22、NDK sysroot和Clang 21 resource目录，不得把NDK根交给要求`ndk-build`的旧入口。
 

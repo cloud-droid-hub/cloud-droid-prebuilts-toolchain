@@ -1,6 +1,6 @@
 # AGENTS.md
 
-`cloud-droid-prebuilts-toolchain`保存`cloud-droid-hub`本地与Docker构建使用的全部工具链源码、包装入口、裁剪生成器、测试及宿主原生工具链。主仓登记路径为`tools/toolchains`，远端固定为私有`https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain.git`。
+`cloud-droid-prebuilts-toolchain`保存`cloud-droid-hub`本地与Docker构建使用的全部工具链源码、包装入口、裁剪生成器、测试及宿主原生工具链。主仓登记路径为`toolchains`，远端固定为私有`https://github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain.git`。
 
 ## 分支与目录
 

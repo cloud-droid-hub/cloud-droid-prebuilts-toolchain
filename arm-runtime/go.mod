@@ -8,4 +8,4 @@ require (
 	golang.org/x/sys v0.47.0
 )
 
-replace github.com/cloud-droid-hub/cloud-droid-hub/pkg/devicekit => ../../../pkg/devicekit
+replace github.com/cloud-droid-hub/cloud-droid-hub/pkg/devicekit => ../../pkg/devicekit

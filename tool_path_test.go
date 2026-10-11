@@ -48,7 +48,7 @@ func TestToolPaths(t *testing.T) {
 			}
 			for name, want := range paths {
 				t.Run(name, func(t *testing.T) {
-					cmd := exec.Command("bash", filepath.Join(root, "tools", "toolchains", "use-prebuilt.sh"),
+					cmd := exec.Command("bash", filepath.Join(root, "toolchains", "use-prebuilt.sh"),
 						"path", "--tool", name, "--host", host, "--repo-root", repo, "--dest", dest)
 					var errs bytes.Buffer
 					cmd.Stderr = &errs
@@ -76,7 +76,7 @@ func TestPathErrors(t *testing.T) {
 		{[]string{"check", "--tool", "go"}, "--tool只适用于path"},
 		{[]string{"env", "--tool", ""}, "--tool只适用于path"},
 	} {
-		args := []string{filepath.Join(root, "tools", "toolchains", "use-prebuilt.sh"), tc.args[0],
+		args := []string{filepath.Join(root, "toolchains", "use-prebuilt.sh"), tc.args[0],
 			"--host", "darwin-arm64", "--repo-root", repo, "--dest", dest}
 		args = append(args, tc.args[1:]...)
 		cmd := exec.Command("bash", args...)
@@ -92,7 +92,7 @@ func TestPathErrors(t *testing.T) {
 
 func TestPathPlan(t *testing.T) {
 	root, repo, dest := tcPathSetup(t, "darwin-arm64")
-	cmd := exec.Command("bash", filepath.Join(root, "tools", "toolchains", "use-prebuilt.sh"),
+	cmd := exec.Command("bash", filepath.Join(root, "toolchains", "use-prebuilt.sh"),
 		"path", "--tool", "go", "--host", "darwin-arm64", "--repo-root", repo, "--dest", dest, "--print-plan")
 	got, err := cmd.Output()
 	if err != nil {

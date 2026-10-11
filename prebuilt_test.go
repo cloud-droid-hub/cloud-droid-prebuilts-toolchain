@@ -26,11 +26,11 @@ func tcCopy(t *testing.T, from, to string) {
 func tcTree(t *testing.T) (string, string) {
 	t.Helper()
 	root := t.TempDir()
-	tcCopy(t, "use-prebuilt.sh", filepath.Join(root, "tools", "toolchains", "use-prebuilt.sh"))
+	tcCopy(t, "use-prebuilt.sh", filepath.Join(root, "toolchains", "use-prebuilt.sh"))
 	tcCopy(t, filepath.Join("..", "build", "git-worktree.sh"),
 		filepath.Join(root, "tools", "build", "git-worktree.sh"))
 
-	repo := filepath.Join(root, "tools", "toolchains")
+	repo := filepath.Join(root, "toolchains")
 	bin := filepath.Join(repo, "darwin-arm64", "bin")
 	if err := os.MkdirAll(bin, 0o755); err != nil {
 		t.Fatal(err)
@@ -50,7 +50,7 @@ func tcTree(t *testing.T) (string, string) {
 
 func tcRun(t *testing.T, root, repo string) string {
 	t.Helper()
-	tool := filepath.Join(root, "tools", "toolchains", "use-prebuilt.sh")
+	tool := filepath.Join(root, "toolchains", "use-prebuilt.sh")
 	cmd := exec.Command("bash", tool, "revision",
 		"--host", "darwin-arm64",
 		"--repo-root", repo,
@@ -76,7 +76,7 @@ func TestTcRevPlain(t *testing.T) {
 
 func TestTcRoot(t *testing.T) {
 	root, _ := tcTree(t)
-	tool := filepath.Join(root, "tools", "toolchains", "use-prebuilt.sh")
+	tool := filepath.Join(root, "toolchains", "use-prebuilt.sh")
 	cmd := exec.Command("bash", tool, "revision", "--host", "darwin-arm64",
 		"--dest", filepath.Join(root, "dest"))
 	var errs strings.Builder

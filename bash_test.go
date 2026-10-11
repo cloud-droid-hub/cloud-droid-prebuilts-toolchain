@@ -12,11 +12,11 @@ import (
 )
 
 func TestBashCLI(t *testing.T) {
-	root, err := filepath.Abs("../..")
+	root, err := filepath.Abs("..")
 	if err != nil {
 		t.Fatal(err)
 	}
-	script := filepath.Join(root, "tools", "toolchains", "bash.sh")
+	script := filepath.Join(root, "toolchains", "bash.sh")
 	cmd := exec.Command(script, "-c", `printf '%s\n%s\n%s\n' "$BASH_VERSION" "$BASH" "$1"; exit 37`, "probe", "空格 $value `literal`")
 	out, err := cmd.CombinedOutput()
 	var code int
@@ -33,7 +33,7 @@ func TestBashCLI(t *testing.T) {
 }
 
 func TestBashScript(t *testing.T) {
-	root, err := filepath.Abs("../..")
+	root, err := filepath.Abs("..")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +42,7 @@ func TestBashScript(t *testing.T) {
 	if err := os.WriteFile(script, []byte("#!/usr/bin/env bash\nset -euo pipefail\ndeclare -A values=([name]=ok)\nprintf '%s|%s|%s' \"${values[name]}\" \"$BASH_VERSION\" \"$1\"\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.Command(filepath.Join(root, "tools", "toolchains", "bash.sh"), script, "with spaces")
+	cmd := exec.Command(filepath.Join(root, "toolchains", "bash.sh"), script, "with spaces")
 	out, err := cmd.CombinedOutput()
 	if err != nil || string(out) != "ok|5.3.15(1)-release|with spaces" {
 		t.Fatalf("脚本执行：%v\n%s", err, out)
@@ -50,14 +50,14 @@ func TestBashScript(t *testing.T) {
 }
 
 func TestBashCold(t *testing.T) {
-	root, err := filepath.Abs("../..")
+	root, err := filepath.Abs("..")
 	if err != nil {
 		t.Fatal(err)
 	}
 	host := runtime.GOOS + "-" + runtime.GOARCH
 	work := t.TempDir()
-	repo := "tools/toolchains/" + host
-	for _, name := range []string{"tools/toolchains/bash.sh", repo + "/bin/cdh-toolchain",
+	repo := "toolchains/" + host
+	for _, name := range []string{"toolchains/bash.sh", repo + "/bin/cdh-toolchain",
 		repo + "/payload/bash53/bash-5.3.15-" + host + ".tar.gz.part-000"} {
 		data, err := os.ReadFile(filepath.Join(root, name))
 		if err != nil {
@@ -76,7 +76,7 @@ func TestBashCold(t *testing.T) {
 		}
 	}
 	dest := filepath.Join(work, "output", "toolchains", host)
-	cmd := exec.Command(filepath.Join(work, "tools/toolchains/bash.sh"), "-c",
+	cmd := exec.Command(filepath.Join(work, "toolchains/bash.sh"), "-c",
 		`declare -A vals=([ok]=yes); printf '%s|%s|%s' "${vals[ok]}" "$BASH_VERSION" "$BASH"`)
 	for _, entry := range os.Environ() {
 		key, _, _ := strings.Cut(entry, "=")

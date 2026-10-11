@@ -1,6 +1,6 @@
 # cloud-droid-prebuilts-toolchain
 
-三个宿主提供CPython`3.14.8`，安装到`python314/`。输入固定为Astral`python-build-standalone`的`20261009`完整`pgo+lto`归档；主仓`tools/toolchains/python-trim/`按`python314-build-v1`生成裁剪包，移除构建对象、libpython静态副本、测试、字节码缓存和手册，保留运行库、标准库、pip、ensurepip、venv、头文件与完整上游许可证。安装器分别核对原生架构、版本、裁剪标记与关键模块实际导入，调用方不改用系统Python。
+三个宿主提供CPython`3.14.8`，安装到`python314/`。输入固定为Astral`python-build-standalone`的`20261009`完整`pgo+lto`归档；主仓`toolchains/python-trim/`按`python314-build-v1`生成裁剪包，移除构建对象、libpython静态副本、测试、字节码缓存和手册，保留运行库、标准库、pip、ensurepip、venv、头文件与完整上游许可证。安装器分别核对原生架构、版本、裁剪标记与关键模块实际导入，调用方不改用系统Python。
 
 | 宿主 | 裁剪tar.gz大小 | SHA256 |
 | --- | --- | --- |
@@ -18,7 +18,7 @@ linux-amd64/
 
 每个目录包含自己的安装程序、类型化归档目录、分片、许可证与测试。仓库统一版本由根目录[version.go](version.go)维护，三个宿主共同遵守根目录[AGENTS.md](AGENTS.md)。平台目录固定发布Go 1.26.8、LLVM 22、Temurin JDK 21.0.12.1+1、Android NDK r29 revision 29.0.14206865、Bazel 8.5.1和Rust/Cargo/Rustdoc 1.97.1。macOS LLVM 22为22.1.8，Linux LLVM 22为Ubuntu 26.04的22.1.2；NDK内Clang与LLD主版本为21，Rust内部LLVM为22.1.6。三个宿主目录都包含`aarch64-linux-android`标准库。
 
-归档以不超过90 MiB的普通Git对象保存，不使用Git LFS。`<host>/bin/cdh-toolchain`负责摘要校验、安全展开、宿主架构检查和逐组件原子发布。主项目把本仓放在`tools/toolchains/`，再把当前宿主工具展开到`output/toolchains/<host>/`；缺失、版本错误或架构不符都会直接失败，不会改用系统工具。
+归档以不超过90 MiB的普通Git对象保存，不使用Git LFS。`<host>/bin/cdh-toolchain`负责摘要校验、安全展开、宿主架构检查和逐组件原子发布。主项目把本仓放在`toolchains/`，再把当前宿主工具展开到`output/toolchains/<host>/`；缺失、版本错误或架构不符都会直接失败，不会改用系统工具。
 
 本仓同时维护环境与安装包装脚本、AIDL构建输入、ARM数据与源码工具以及LLVM、JDK、Python裁剪器。组件根Go模块覆盖包装入口的行为测试及`python-trim/`，三个宿主安装器和其它生成器保持独立模块。生成器通过相对路径使用主仓的`pkg/devicekit`工作根接口；主仓正式入口负责绑定临时目录及离线依赖，普通源码包按相同布局使用，无需Git元数据。
 
@@ -40,7 +40,7 @@ LLVM22、NDK29、SDK37、SDKApp37及AOSP15的三宿主裁剪由[trim-pack](trim-
 
 Bash统一安装到`bash53/`，版本为`5.3.15(1)-release`。三个程序取自[feicong/bash-static](https://github.com/feicong/bash-static)：macOS arm64与Linux arm64来自[成功构建35507495813](https://github.com/feicong/bash-static/actions/runs/35507495813)，Linux amd64来自[成功构建35507468329](https://github.com/feicong/bash-static/actions/runs/35507468329)，保留原始程序字节。Linux程序为静态ELF，macOS程序为arm64 Mach-O并依赖系统`libncurses.5.4`、`libiconv.2`、CoreFoundation与libSystem；不能把macOS程序称为静态链接。三个包包含GNU GPLv3，Linux包还包含musl许可证。归档合计1647101字节，各宿主一卷，完整摘要、程序摘要与版本探针由`internal/catalog/bash.go`登记。
 
-主项目的`tools/toolchains/bash.sh`用POSIX入口调用本仓安装器，只展开Bash后才执行脚本体。单独安装与检查Bash使用：
+主项目的`toolchains/bash.sh`用POSIX入口调用本仓安装器，只展开Bash后才执行脚本体。单独安装与检查Bash使用：
 
 ```sh
 host=darwin-arm64

@@ -4,7 +4,7 @@
 
 本目录由仓库唯一`main`分支维护，发布Linux amd64使用的Go 1.26.8、Temurin JDK 21.0.12.1+1、Ubuntu 26.04 LLVM 22.1.2、裁剪后的Android NDK r29 revision 29.0.14206865、Bazel 8.5.1和Rust/Cargo 1.97.1。Rust内部LLVM为22.1.6，并包含`aarch64-linux-android`标准库。
 
-JDK的`jdk21-build-v1`包为76693983字节、1卷，安装目录为`jdk21trim1/`。完整上游包为207473347字节；保留完整运行模块与构建程序，移除`jmods/`、`man/`和`lib/src.zip`，保留JNI头文件及全部许可证。主仓`tools/toolchains/jdk-trim/`负责固定输入、自动裁剪和字节重放核验。制品在macOSarm64生成和核验，本轮未在Linuxamd64执行。
+JDK的`jdk21-build-v1`包为76693983字节、1卷，安装目录为`jdk21trim1/`。完整上游包为207473347字节；保留完整运行模块与构建程序，移除`jmods/`、`man/`和`lib/src.zip`，保留JNI头文件及全部许可证。主仓`toolchains/jdk-trim/`负责固定输入、自动裁剪和字节重放核验。制品在macOSarm64生成和核验，本轮未在Linuxamd64执行。
 
 LLVM 22归档内的`libedit2`与`libgnutls30t64`固定取自Ubuntu 24.04 LTS，使工具可在glibc 2.39及更新的amd64宿主运行；LLVM程序与其它随附运行库仍来自登记的Ubuntu 26.04软件包。归档同时携带登记的`libssl`与`libcrypto`，不依赖宿主OpenSSL的小版本补齐`libcurl`。
 
