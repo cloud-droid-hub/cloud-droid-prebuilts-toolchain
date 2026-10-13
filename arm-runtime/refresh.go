@@ -24,7 +24,7 @@ func refreshCopy(args []string, dest string) (returnErr error) {
 	if err != nil {
 		return fmt.Errorf("source cache parent is invalid: %s: %w", parent, err)
 	}
-	if !ownDir(info) || info.Mode().Perm()&0o002 != 0 {
+	if !ownDir(info) {
 		owner := "unavailable"
 		if stat, ok := info.Sys().(*syscall.Stat_t); ok {
 			owner = fmt.Sprint(stat.Uid)
@@ -45,17 +45,15 @@ func refreshCopy(args []string, dest string) (returnErr error) {
 		info.Mode() != opened.Mode() || info.Mode() != named.Mode() {
 		return errors.Join(errors.New("source cache parent identity changed"), err, nameErr)
 	}
-	// 既有工作父目录在原句柄上设为0755，不改变旧缓存内容或身份。
+	// 既有父目录只报告模式差异，实际读写仍由文件系统判定。
 	if opened.Mode() != os.ModeDir|0o755 {
-		if err := file.Chmod(0o755); err != nil {
-			return err
-		}
+		fmt.Fprintf(os.Stderr, "警告:源码缓存父目录%s实际模式=%s，建议模式=0755，保留原对象继续\n", parent, opened.Mode())
 	}
 	opened, err = file.Stat()
 	named, nameErr = os.Lstat(parent)
 	if err != nil || nameErr != nil || !ownDir(opened) || !ownDir(named) ||
 		!os.SameFile(info, opened) || !os.SameFile(info, named) ||
-		opened.Mode() != os.ModeDir|0o755 || named.Mode() != os.ModeDir|0o755 {
+		opened.Mode() != info.Mode() || named.Mode() != info.Mode() {
 		return errors.Join(errors.New("source cache parent mode or identity changed"), err, nameErr)
 	}
 	root, err := os.OpenRoot(parent)
@@ -91,8 +89,11 @@ func refreshCopy(args []string, dest string) (returnErr error) {
 	if os.IsNotExist(err) {
 		return run(args)
 	}
-	if err != nil || !ownDir(old) || old.Mode().Perm()&0o022 != 0 {
+	if err != nil || !ownDir(old) {
 		return errors.Join(errors.New("source cache must be an owned ordinary directory"), err)
+	}
+	if old.Mode() != os.ModeDir|0o755 {
+		fmt.Fprintf(os.Stderr, "警告:源码缓存目录%s实际模式=%s，建议模式=0755，保留原对象继续\n", abs, old.Mode())
 	}
 	check := append([]string(nil), args...)
 	check[0] += "-check"
