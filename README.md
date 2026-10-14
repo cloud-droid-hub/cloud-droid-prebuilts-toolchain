@@ -8,7 +8,7 @@
 | linux-arm64 | 58800714 | `ce3f118977c3b8b0299b55ed24182c4f68d262825ce638eed7ffdb57ffa7115b` |
 | linux-amd64 | 76519762 | `7605cd4099a4dc2dc51cb605d26a12f98c11fa0764b1e6c8122155bd9babab91` |
 
-本私有仓库为`cloud-droid-hub`提供本地与Docker构建所需的固定宿主原生工具链。仓库只维护`main`分支，三个原平台分支的内容和历史分别归入以下顶层目录：
+本公开仓库为`cloud-droid-hub`提供本地与Docker构建所需的固定宿主原生工具链。仓库只维护`main`分支，三个原平台分支的内容和历史分别归入以下顶层目录：
 
 ```text
 darwin-arm64/
