@@ -121,7 +121,7 @@ func TestFlatLib(t *testing.T) {
 
 func TestBadArchive(t *testing.T) {
 	for _, item := range []sample{
-		{"usr/bin/ignored", tar.TypeLink, "usr/bin/source", "", 0o644},
+		{"usr/lib/aarch64-linux-gnu/bad.so", tar.TypeLink, "../outside", "", 0o644},
 		{"../escape", tar.TypeReg, "", "bad", 0o644},
 		{"/usr/include/bad", tar.TypeReg, "", "bad", 0o644},
 	} {

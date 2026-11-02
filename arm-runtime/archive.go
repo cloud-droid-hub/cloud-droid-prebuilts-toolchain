@@ -119,16 +119,21 @@ func (tree *tarTree) readTar(src io.Reader, keep func(string) bool) error {
 		if err != nil {
 			return err
 		}
-		if h.Typeflag == tar.TypeLink {
-			return fmt.Errorf("archive hard link rejected: %s", name)
-		}
-		if h.Typeflag != tar.TypeDir && h.Typeflag != tar.TypeReg && h.Typeflag != tar.TypeSymlink {
+		if h.Typeflag != tar.TypeDir && h.Typeflag != tar.TypeReg && h.Typeflag != tar.TypeSymlink && h.Typeflag != tar.TypeLink {
 			return fmt.Errorf("archive special entry rejected: %s", name)
 		}
 		if !keep(name) {
 			continue
 		}
 		item := tarItem{kind: h.Typeflag, link: h.Linkname, mode: os.FileMode(h.Mode).Perm(), size: h.Size}
+		if item.kind == tar.TypeLink {
+			if item.link == "" {
+				return fmt.Errorf("empty archive hard link target: %s", name)
+			}
+			if _, err := tarName(item.link); err != nil {
+				return err
+			}
+		}
 		if item.kind == tar.TypeReg {
 			if h.Size > 0 {
 				if err := spaceNeed(tree.dir, uint64(h.Size)); err != nil {
@@ -198,6 +203,17 @@ func (tree *tarTree) resolve(name string, seen map[string]bool) (string, tarItem
 	seen[name] = true
 	defer delete(seen, name)
 	if item, ok := tree.items[name]; ok {
+		if item.kind == tar.TypeLink {
+			dest, err := tarName(item.link)
+			if err != nil {
+				return "", tarItem{}, err
+			}
+			resolved, out, err := tree.resolve(dest, seen)
+			if err == nil && out.kind != tar.TypeReg {
+				err = fmt.Errorf("archive hard link target is not a regular file: %s", name)
+			}
+			return resolved, out, err
+		}
 		if item.kind != tar.TypeSymlink {
 			return name, item, nil
 		}
