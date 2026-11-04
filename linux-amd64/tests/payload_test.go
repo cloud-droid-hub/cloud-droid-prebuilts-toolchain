@@ -5,9 +5,7 @@ package tests
 import (
 	"archive/tar"
 	"context"
-	"crypto/sha256"
 	"debug/elf"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
