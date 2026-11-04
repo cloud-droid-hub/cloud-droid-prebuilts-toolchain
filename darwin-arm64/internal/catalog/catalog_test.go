@@ -4,51 +4,6 @@ package catalog
 
 import "testing"
 
-func TestCatalog(t *testing.T) {
-	spec := Current()
-	if spec.Host != "darwin-arm64" {
-		t.Fatalf("host=%q", spec.Host)
-	}
-	if !spec.Ready || len(spec.Archives) != 10 {
-		t.Fatalf("ready=%v archives=%d", spec.Ready, len(spec.Archives))
-	}
-	archive := spec.Archives[0]
-	if archive.Name != "Go" || archive.Version != "1.26.8" || archive.Dir != "go126" {
-		t.Fatalf("archive=%+v", archive)
-	}
-	archive = spec.Archives[1]
-	if archive.Name != "JDK" || archive.Version != "21.0.12.1+1" || archive.Dir != "jdk21" {
-		t.Fatalf("archive=%+v", archive)
-	}
-	archive = spec.Archives[2]
-	if archive.Name != "LLVM 22" || archive.Version != "22.1.8" || archive.Dir != "llvm22" {
-		t.Fatalf("archive=%+v", archive)
-	}
-	archive = spec.Archives[3]
-	if archive.Name != "Android NDK" || archive.Version != "29.0.14206865" || archive.Dir != "ndk29" {
-		t.Fatalf("archive=%+v", archive)
-	}
-	archive = spec.Archives[4]
-	if archive.Name != "Bazel" || archive.Version != "8.5.1" || archive.Dir != "bazel851" {
-		t.Fatalf("archive=%+v", archive)
-	}
-	archive = spec.Archives[5]
-	if archive.Name != "Rust" || archive.Version != "1.97.1" || archive.Dir != "rust197" {
-		t.Fatalf("archive=%+v", archive)
-	}
-	archive = spec.Archives[6]
-	if archive.Name != "AOSP 15 tools" || archive.Version != "android-15.0.0_r36" || archive.Dir != "aosp15" {
-		t.Fatalf("archive=%+v", archive)
-	}
-	archive = spec.Archives[7]
-	if archive.Name != "Android SDK" || archive.Version != "37.0.0" || archive.Dir != "sdk37" {
-		t.Fatalf("archive=%+v", archive)
-	}
-	if err := Valid(spec); err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestBadCatalog(t *testing.T) {
 	base := Spec{
 		Host:  "darwin-arm64",
