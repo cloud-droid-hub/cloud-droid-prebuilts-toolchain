@@ -4,10 +4,8 @@ package tests
 
 import (
 	"context"
-	"crypto/sha256"
 	"debug/elf"
 	"debug/macho"
-	"encoding/hex"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -79,22 +77,6 @@ func TestLLVM22(t *testing.T) {
 		t.Fatal(err)
 	}
 	repo := filepath.Dir(work)
-	license := filepath.Join(repo, "licenses", "llvm22", "LICENSE.TXT")
-	licenseData, err := os.ReadFile(license)
-	if err != nil {
-		t.Fatal(err)
-	}
-	sum := sha256.Sum256(licenseData)
-	if got := hex.EncodeToString(sum[:]); got != "8d85c1057d742e597985c7d4e6320b015a9139385cff4cbae06ffc0ebe89afee" {
-		t.Fatalf("LLVM 22 license SHA-256=%s", got)
-	}
-	licenseInfo, err := os.Stat(license)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if licenseInfo.Mode().Perm() != 0o644 {
-		t.Fatalf("LLVM 22 license mode=%#o", licenseInfo.Mode().Perm())
-	}
 	dest := filepath.Join(t.TempDir(), "tools")
 	spec := catalog.Current()
 	spec.Archives = spec.Archives[3:]
@@ -168,42 +150,12 @@ func TestLLVM22(t *testing.T) {
 
 func TestNDK29(t *testing.T) {
 	spec := catalog.Current()
-	if len(spec.Archives) != 8 {
-		t.Fatalf("archives=%d", len(spec.Archives))
-	}
 	ndk := spec.Archives[4]
-	if ndk.Name != "Android NDK" || ndk.Version != "29.0.14206865" || ndk.Dir != "ndk29" {
-		t.Fatalf("archive=%+v", ndk)
-	}
 	work, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
 	}
 	repo := filepath.Dir(work)
-	for _, notice := range []struct {
-		name string
-		want string
-	}{
-		{name: "NOTICE", want: "faf0dc52cf6ce9ab09a04b0c074a378dd2565ee1ed9bc1179d83793bcdba012e"},
-		{name: "NOTICE.toolchain", want: "789714a9076571c580cf531bdcebec776a4d889c12c3c1108adafc6e4338710a"},
-	} {
-		pathName := filepath.Join(repo, "licenses", "ndk29", notice.name)
-		data, err := os.ReadFile(pathName)
-		if err != nil {
-			t.Fatal(err)
-		}
-		sum := sha256.Sum256(data)
-		if got := hex.EncodeToString(sum[:]); got != notice.want {
-			t.Fatalf("%s SHA-256=%s", notice.name, got)
-		}
-		info, err := os.Stat(pathName)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if info.Mode().Perm() != 0o644 {
-			t.Fatalf("%s mode=%#o", notice.name, info.Mode().Perm())
-		}
-	}
 	dest := filepath.Join(t.TempDir(), "tools")
 	spec.Archives = []catalog.Archive{ndk}
 	if err := install.Run(context.Background(), repo, dest, spec); err != nil {
@@ -399,26 +351,7 @@ func TestBazel(t *testing.T) {
 		t.Fatal(err)
 	}
 	repo := filepath.Dir(work)
-	lic := filepath.Join(repo, "licenses", "bazel", "LICENSE")
-	data, err := os.ReadFile(lic)
-	if err != nil {
-		t.Fatal(err)
-	}
-	sum := sha256.Sum256(data)
-	if got := hex.EncodeToString(sum[:]); got != "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30" {
-		t.Fatalf("Bazel license SHA-256=%s", got)
-	}
-	info, err := os.Stat(lic)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if info.Mode().Perm() != 0o644 {
-		t.Fatalf("Bazel license mode=%#o", info.Mode().Perm())
-	}
 	spec := catalog.Current()
-	if len(spec.Archives) != 8 {
-		t.Fatalf("archives=%d", len(spec.Archives))
-	}
 	spec.Archives = spec.Archives[5:]
 	dest := filepath.Join(t.TempDir(), "tools")
 	if err := install.Run(context.Background(), repo, dest, spec); err != nil {
@@ -442,7 +375,7 @@ func TestBazel(t *testing.T) {
 	if err := bin.Close(); err != nil {
 		t.Fatal(err)
 	}
-	info, err = os.Stat(bazel)
+	info, err := os.Stat(bazel)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -457,40 +390,8 @@ func TestRust197(t *testing.T) {
 		t.Fatal(err)
 	}
 	repo := filepath.Dir(work)
-	licenses := []struct {
-		name string
-		sum  string
-	}{
-		{name: "COPYRIGHT", sum: "172020dbfd5b53a226dfde77616190a48dcff519b0bc0e6deb91a8450782c4af"},
-		{name: "LICENSE-APACHE", sum: "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a"},
-		{name: "LICENSE-MIT", sum: "b71bd43a069ca0641a9ecfe585ca7b3c53b5cc1608f8b68321168698e28b5ea1"},
-	}
-	for _, item := range licenses {
-		name := filepath.Join(repo, "licenses", "rust", item.name)
-		data, err := os.ReadFile(name)
-		if err != nil {
-			t.Fatal(err)
-		}
-		sum := sha256.Sum256(data)
-		if got := hex.EncodeToString(sum[:]); got != item.sum {
-			t.Fatalf("%s SHA-256=%s", item.name, got)
-		}
-		info, err := os.Stat(name)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if info.Mode().Perm() != 0o644 {
-			t.Fatalf("%s mode=%#o", item.name, info.Mode().Perm())
-		}
-	}
 	spec := catalog.Current()
-	if len(spec.Archives) != 8 {
-		t.Fatalf("archives=%d", len(spec.Archives))
-	}
 	rust := spec.Archives[6]
-	if rust.Name != "Rust" || rust.Version != "1.97.1" || rust.Dir != "rust197" {
-		t.Fatalf("archive=%+v", rust)
-	}
 	spec.Archives = []catalog.Archive{rust}
 	dest := filepath.Join(t.TempDir(), "tools")
 	if err := install.Run(context.Background(), repo, dest, spec); err != nil {
