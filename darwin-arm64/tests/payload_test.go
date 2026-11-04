@@ -16,6 +16,27 @@ import (
 	"github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/install"
 )
 
+func payloadSpec(t *testing.T, dirs ...string) catalog.Spec {
+	t.Helper()
+	spec := catalog.Current()
+	all := spec.Archives
+	spec.Archives = nil
+	for _, dir := range dirs {
+		found := false
+		for _, arc := range all {
+			if arc.Dir == dir {
+				spec.Archives = append(spec.Archives, arc)
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("安装测试所需组件未登记:%s", dir)
+		}
+	}
+	return spec
+}
+
 func TestPayloads(t *testing.T) {
 	t.Setenv("GOTOOLCHAIN", "go1.27.0")
 	t.Setenv("JAVA_TOOL_OPTIONS", "-XX:InvalidCDHOption")
@@ -78,8 +99,7 @@ func TestLLVM22(t *testing.T) {
 	}
 	repo := filepath.Dir(work)
 	dest := filepath.Join(t.TempDir(), "tools")
-	spec := catalog.Current()
-	spec.Archives = spec.Archives[3:]
+	spec := payloadSpec(t, "llvm22")
 	if err := install.Run(context.Background(), repo, dest, spec); err != nil {
 		t.Fatal(err)
 	}
@@ -149,15 +169,13 @@ func TestLLVM22(t *testing.T) {
 }
 
 func TestNDK29(t *testing.T) {
-	spec := catalog.Current()
-	ndk := spec.Archives[4]
+	spec := payloadSpec(t, "ndk29")
 	work, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
 	}
 	repo := filepath.Dir(work)
 	dest := filepath.Join(t.TempDir(), "tools")
-	spec.Archives = []catalog.Archive{ndk}
 	if err := install.Run(context.Background(), repo, dest, spec); err != nil {
 		t.Fatal(err)
 	}
@@ -351,8 +369,7 @@ func TestBazel(t *testing.T) {
 		t.Fatal(err)
 	}
 	repo := filepath.Dir(work)
-	spec := catalog.Current()
-	spec.Archives = spec.Archives[5:]
+	spec := payloadSpec(t, "bazel851")
 	dest := filepath.Join(t.TempDir(), "tools")
 	if err := install.Run(context.Background(), repo, dest, spec); err != nil {
 		t.Fatal(err)
@@ -390,9 +407,7 @@ func TestRust197(t *testing.T) {
 		t.Fatal(err)
 	}
 	repo := filepath.Dir(work)
-	spec := catalog.Current()
-	rust := spec.Archives[6]
-	spec.Archives = []catalog.Archive{rust}
+	spec := payloadSpec(t, "rust197")
 	dest := filepath.Join(t.TempDir(), "tools")
 	if err := install.Run(context.Background(), repo, dest, spec); err != nil {
 		t.Fatal(err)

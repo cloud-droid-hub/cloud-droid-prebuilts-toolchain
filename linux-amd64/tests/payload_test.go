@@ -21,6 +21,27 @@ import (
 	"github.com/cloud-droid-hub/cloud-droid-prebuilts-toolchain/internal/install"
 )
 
+func payloadSpec(t *testing.T, dirs ...string) catalog.Spec {
+	t.Helper()
+	spec := catalog.Current()
+	all := spec.Archives
+	spec.Archives = nil
+	for _, dir := range dirs {
+		found := false
+		for _, arc := range all {
+			if arc.Dir == dir {
+				spec.Archives = append(spec.Archives, arc)
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("安装测试所需组件未登记:%s", dir)
+		}
+	}
+	return spec
+}
+
 func TestGo126(t *testing.T) {
 	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
 		t.Skip("需要Linux amd64宿主执行Go安装与编译验证")
@@ -108,8 +129,7 @@ func TestJDK21(t *testing.T) {
 	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
 		t.Skip("需要Linux amd64宿主执行JDK安装与编译验证")
 	}
-	spec := catalog.Current()
-	archive := spec.Archives[1]
+	spec := payloadSpec(t, "jdk21")
 	work, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
@@ -118,7 +138,6 @@ func TestJDK21(t *testing.T) {
 	t.Setenv("JAVA_TOOL_OPTIONS", "-XX:InvalidCDHOption")
 	t.Setenv("_JAVA_OPTIONS", "-XX:InvalidCDHOption")
 	t.Setenv("JDK_JAVA_OPTIONS", "-XX:InvalidCDHOption")
-	spec.Archives = []catalog.Archive{archive}
 	dest := filepath.Join(t.TempDir(), "tools")
 	if err := install.Run(context.Background(), repo, dest, spec); err != nil {
 		t.Fatal(err)
@@ -245,14 +264,12 @@ func TestLLVM22(t *testing.T) {
 	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
 		t.Skip("需要Linux amd64宿主执行LLVM安装与链接验证")
 	}
-	spec := catalog.Current()
-	archive := spec.Archives[3]
+	spec := payloadSpec(t, "llvm22")
 	work, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
 	}
 	repo := filepath.Dir(work)
-	spec.Archives = []catalog.Archive{archive}
 	root := os.Getenv("CDH_LLVM22_TEST_ROOT")
 	if root == "" {
 		dest := filepath.Join(t.TempDir(), "tools")
@@ -436,14 +453,12 @@ func TestNDK29(t *testing.T) {
 	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
 		t.Skip("需要Linux amd64宿主执行NDK安装与链接验证")
 	}
-	spec := catalog.Current()
-	ndk := spec.Archives[4]
+	spec := payloadSpec(t, "ndk29")
 	work, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
 	}
 	repo := filepath.Dir(work)
-	spec.Archives = []catalog.Archive{ndk}
 	dest := filepath.Join(t.TempDir(), "tools")
 	if err := install.Run(context.Background(), repo, dest, spec); err != nil {
 		t.Fatal(err)
@@ -745,9 +760,7 @@ func TestBazel(t *testing.T) {
 		t.Fatal(err)
 	}
 	repo := filepath.Dir(work)
-	spec := catalog.Current()
-	bzl := spec.Archives[5]
-	spec.Archives = []catalog.Archive{bzl}
+	spec := payloadSpec(t, "bazel851")
 	dest := filepath.Join(t.TempDir(), "tools")
 	if err := install.Run(context.Background(), repo, dest, spec); err != nil {
 		t.Fatal(err)
@@ -788,9 +801,7 @@ func TestRust197(t *testing.T) {
 		t.Fatal(err)
 	}
 	repo := filepath.Dir(work)
-	spec := catalog.Current()
-	rust := spec.Archives[6]
-	spec.Archives = []catalog.Archive{rust}
+	spec := payloadSpec(t, "rust197")
 	dest := filepath.Join(t.TempDir(), "tools")
 	if err := install.Run(context.Background(), repo, dest, spec); err != nil {
 		t.Fatal(err)
