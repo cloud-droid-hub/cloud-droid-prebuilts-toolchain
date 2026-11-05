@@ -196,7 +196,7 @@ check_config_py() {
 load_config() {
 	local fields=() field source_count expected index offset
 	config_json="$(cd -- "$project_root" && CDH_TARGET=common GOTOOLCHAIN=local GOPROXY=off GOSUMDB=off GONOPROXY=none \
-		"$project_root/build/cwd-go.sh" "$go_bin" run -buildvcs=false ./cmd/toolchaincfg aidl36)"
+		"$project_root/build/cwd-go.sh" "$go_bin" run -buildvcs=false ./build/toolchain.go aidl36)"
 	# NUL分隔字段保留空格和换行，不经Shell重新拆词。
 	while IFS= read -r -d '' field; do
 		fields+=("$field")
