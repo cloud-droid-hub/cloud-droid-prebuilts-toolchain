@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/cloud-droid-hub/cloud-droid-hub/pkg/devicekit/workpath"
+	workpath "github.com/cloud-droid-hub/cloud-droid-build/work"
 )
 
 type part struct {

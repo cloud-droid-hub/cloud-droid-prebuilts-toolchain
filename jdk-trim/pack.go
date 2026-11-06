@@ -16,7 +16,7 @@ import (
 	"sort"
 	"syscall"
 
-	"github.com/cloud-droid-hub/cloud-droid-hub/pkg/devicekit/workpath"
+	workpath "github.com/cloud-droid-hub/cloud-droid-build/work"
 	"golang.org/x/sys/unix"
 )
 

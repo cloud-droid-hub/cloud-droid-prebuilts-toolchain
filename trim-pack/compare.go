@@ -16,7 +16,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cloud-droid-hub/cloud-droid-hub/pkg/devicekit/workpath"
+	workpath "github.com/cloud-droid-hub/cloud-droid-build/work"
 	"github.com/ulikunitz/xz"
 )
 

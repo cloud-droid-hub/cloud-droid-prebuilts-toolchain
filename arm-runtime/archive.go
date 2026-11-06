@@ -13,7 +13,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cloud-droid-hub/cloud-droid-hub/pkg/devicekit/workpath"
+	workpath "github.com/cloud-droid-hub/cloud-droid-build/work"
 )
 
 const rustPrefix = "rust-1.97.1/lib/rustlib/aarch64-unknown-linux-gnu/"

@@ -12,10 +12,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/cloud-droid-hub/cloud-droid-hub/pkg/devicekit/workpath"
+	workpath "github.com/cloud-droid-hub/cloud-droid-build/work"
 )
 
-func fixture(t *testing.T, extra ...tar.Header) []byte {
+func tarInput(t *testing.T, extra ...tar.Header) []byte {
 	t.Helper()
 	var buf bytes.Buffer
 	w := tar.NewWriter(&buf)
@@ -41,7 +41,7 @@ func fixture(t *testing.T, extra ...tar.Header) []byte {
 }
 
 func TestTrim(t *testing.T) {
-	in := fixture(t,
+	in := tarInput(t,
 		tar.Header{Name: "python/build/obj.o", Size: 50},
 		tar.Header{Name: "python/install/lib/python3.14/test/sample.py", Size: 30},
 		tar.Header{Name: "python/install/lib/python3.14/__pycache__/os.pyc", Size: 20},
@@ -101,14 +101,14 @@ func TestReject(t *testing.T) {
 		{Name: "python/install/bin/python3.14"},
 	} {
 		t.Run(h.Name, func(t *testing.T) {
-			if _, err := trim(context.Background(), sources[0], bytes.NewReader(fixture(t, h)), io.Discard); err == nil {
+			if _, err := trim(context.Background(), sources[0], bytes.NewReader(tarInput(t, h)), io.Discard); err == nil {
 				t.Fatal("异常归档未被拒绝")
 			}
 		})
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if _, err := trim(ctx, sources[0], bytes.NewReader(fixture(t)), io.Discard); !errors.Is(err, context.Canceled) {
+	if _, err := trim(ctx, sources[0], bytes.NewReader(tarInput(t)), io.Discard); !errors.Is(err, context.Canceled) {
 		t.Fatalf("取消未生效：%v", err)
 	}
 }

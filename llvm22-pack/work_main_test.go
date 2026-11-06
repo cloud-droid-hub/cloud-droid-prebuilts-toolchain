@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"testing"
 
-	"github.com/cloud-droid-hub/cloud-droid-hub/pkg/devicekit/workpath"
+	workpath "github.com/cloud-droid-hub/cloud-droid-build/work"
 )
 
 func TestMain(m *testing.M) { os.Exit(workpath.Run(m)) }

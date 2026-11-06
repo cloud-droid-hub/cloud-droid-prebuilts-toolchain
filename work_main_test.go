@@ -2,7 +2,7 @@
 package version_test
 
 import (
-	"github.com/cloud-droid-hub/cloud-droid-hub/pkg/devicekit/workpath"
+	workpath "github.com/cloud-droid-hub/cloud-droid-build/work"
 	"os"
 	"testing"
 )

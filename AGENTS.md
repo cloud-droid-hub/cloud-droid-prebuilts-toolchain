@@ -48,7 +48,7 @@
 
 ## 代码与测试
 
-- 组件根模块覆盖包装入口测试及`python-trim/`；三个宿主目录及`rehome/`、`arm-runtime/`、`llvm22-pack/`、`jdk-trim/`、`trim-pack/`是互相独立的Go模块，最低Go版本为1.26。生成器按已登记相对路径绑定主仓`pkg/devicekit`的工作根接口，不依赖Git元数据。所有编程语言的自定义类、方法、函数、字段和变量名不超过16个字符，测试函数的`Test`前缀计入长度。
+- 组件根模块覆盖包装入口测试及`python-trim/`；三个宿主目录及`rehome/`、`arm-runtime/`、`llvm22-pack/`、`jdk-trim/`、`trim-pack/`是互相独立的Go模块，最低Go版本为1.26。生成器按已登记相对路径绑定主仓`build/work`模块的工作根接口，不依赖Git元数据。所有编程语言的自定义类、方法、函数、字段和变量名不超过16个字符，测试函数的`Test`前缀计入长度。
 - 先写能观察到失败的Go行为测试并实际取得红灯，再写实现。测试验证输入、输出、退出状态、文件模式、摘要和宿主架构，不读取源码文本断言实现细节。
 - Go测试经主仓`build/cwd-go.sh`绑定`TMPDIR`和`GOTMPDIR`，通用测试使用主仓`output/target/common/tmp/`，设备调用使用所属设备目标根。提交前执行三个模块的适用聚焦测试、`go vet`、`git diff --check`和适用宿主的实际安装验证。
 - 不创建`.github/workflows/`，本仓不启用GitHub Actions。

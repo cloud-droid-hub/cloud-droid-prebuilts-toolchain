@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cloud-droid-hub/cloud-droid-hub/pkg/devicekit/workpath"
+	workpath "github.com/cloud-droid-hub/cloud-droid-build/work"
 	"golang.org/x/sys/unix"
 )
 
@@ -40,7 +40,7 @@ type testNode struct {
 func nodes() []testNode {
 	var out []testNode
 	for _, name := range mustFiles {
-		out = append(out, testNode{name: name, data: "fixture:" + name})
+		out = append(out, testNode{name: name, data: "input:" + name})
 	}
 	return append(out,
 		testNode{name: "jmods/java.base.jmod", data: "module-copy"},
@@ -85,12 +85,12 @@ func source(t *testing.T, list []testNode) (string, plan) {
 		t.Fatal(err)
 	}
 	sum := sha256.Sum256(buf.Bytes())
-	return file, plan{Host: "fixture", Prefix: "jdk", SrcSHA: hex.EncodeToString(sum[:]), Stem: "fixture"}
+	return file, plan{Host: "sample", Prefix: "jdk", SrcSHA: hex.EncodeToString(sum[:]), Stem: "sample"}
 }
 
 func output(t *testing.T, dir string) map[string]string {
 	t.Helper()
-	file, err := os.Open(filepath.Join(dir, "fixture.tar.gz"))
+	file, err := os.Open(filepath.Join(dir, "sample.tar.gz"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +140,7 @@ func TestReplay(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	for _, name := range []string{"fixture.tar.gz", "fixture.tar.gz.part-000", "report.json"} {
+	for _, name := range []string{"sample.tar.gz", "sample.tar.gz.part-000", "report.json"} {
 		a, err := os.ReadFile(filepath.Join(first, name))
 		if err != nil {
 			t.Fatal(err)
@@ -152,7 +152,7 @@ func TestReplay(t *testing.T) {
 	}
 	out := output(t, first)
 	for _, name := range mustFiles {
-		if out[outPrefix+"/"+name] != "fixture:"+name {
+		if out[outPrefix+"/"+name] != "input:"+name {
 			t.Fatalf("保留文件字节改变：%s", name)
 		}
 	}
@@ -161,7 +161,7 @@ func TestReplay(t *testing.T) {
 			t.Fatalf("裁剪文件仍存在：%s", name)
 		}
 	}
-	if out[outPrefix+"/legal/java.compiler/LICENSE"] != "fixture:legal/java.base/LICENSE" {
+	if out[outPrefix+"/legal/java.compiler/LICENSE"] != "input:legal/java.base/LICENSE" {
 		t.Fatal("许可证链接字节丢失")
 	}
 }
@@ -238,7 +238,7 @@ func TestCorrupt(t *testing.T) {
 	if _, err := pack(context.Background(), spec, in, dest); err != nil {
 		t.Fatal(err)
 	}
-	name := filepath.Join(dest, "fixture.tar.gz.part-000")
+	name := filepath.Join(dest, "sample.tar.gz.part-000")
 	if err := os.WriteFile(name, []byte("changed"), 0o644); err != nil {
 		t.Fatal(err)
 	}
