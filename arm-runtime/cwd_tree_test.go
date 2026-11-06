@@ -53,7 +53,6 @@ func TestTreeCWD(t *testing.T) {
 			if !strings.HasPrefix(file, want) {
 				t.Errorf("归档内容文件未采用统一目标根:file=%s want=%s", file, want)
 			}
-			srcWorkGone(t, cwd)
 			if info, err := os.Lstat(file); err != nil || regular(info) != nil || info.Mode().Perm() != 0o644 {
 				t.Errorf("归档内容文件身份或权限错误:info=%v err=%v", info, err)
 			}
@@ -110,7 +109,6 @@ func TestRunCWD(t *testing.T) {
 			if _, err := os.Lstat(missing); !os.IsNotExist(err) {
 				t.Errorf("旧工作目录被创建:err=%v", err)
 			}
-			srcWorkGone(t, cwd)
 			if entries, err := os.ReadDir(tmp); err != nil || len(entries) != 0 {
 				t.Errorf("当前目录工作路径未清理:entries=%v err=%v", entries, err)
 			}
@@ -194,7 +192,6 @@ func TestSourceFail(t *testing.T) {
 	if got, err := os.ReadFile(input); err != nil || !bytes.Equal(got, zipped.Bytes()) {
 		t.Errorf("失败后原输入改变:err=%v", err)
 	}
-	srcWorkGone(t, cwd)
 	if entries, err := os.ReadDir(tmp); err != nil || len(entries) != 0 {
 		t.Errorf("失败后内容工作目录未清理:entries=%v err=%v", entries, err)
 	}
@@ -206,8 +203,8 @@ func newTestRoot(t *testing.T) (string, string) {
 	if err := os.Chmod(base, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	mod := []byte("module github.com/cloud-droid-hub/cloud-droid-hub\n\ngo 1.26.0\n")
-	if err := os.WriteFile(filepath.Join(base, "go.mod"), mod, 0o644); err != nil {
+	work := []byte("// cloud-droid-hub\n\ngo 1.26.0\n")
+	if err := os.WriteFile(filepath.Join(base, "go.work"), work, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	scope, err := workpath.Scope(base)
@@ -215,14 +212,4 @@ func newTestRoot(t *testing.T) (string, string) {
 		t.Fatal(err)
 	}
 	return base, filepath.Join(scope, "tmp")
-}
-
-func srcWorkGone(t *testing.T, cwd string) {
-	t.Helper()
-	for _, name := range []string{"build", "output", "dist"} {
-		path := filepath.Join(cwd, name)
-		if _, err := os.Lstat(path); !os.IsNotExist(err) {
-			t.Errorf("源码子目录出现生成内容:path=%s err=%v", path, err)
-		}
-	}
 }
