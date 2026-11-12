@@ -6,7 +6,7 @@ set -euo pipefail
 
 usage() {
   printf '%s\n' 'usage: use-prebuilt.sh <install|check|env|path|require|require-env|revision> [--host HOST] [--repo-root DIR] [--dest DIR] [--print-plan] [--export] [--tool NAME]' >&2
-  printf '%s\n' 'tools: bash python go java javac bazel cargo rustc rustdoc clang clang++ ld lld ar readelf' >&2
+  printf '%s\n' 'tools: bash python go go127 java javac bazel cargo rustc rustdoc clang clang++ ld lld ar readelf' >&2
   exit 2
 }
 
@@ -134,6 +134,7 @@ if [[ "$command_name" == path ]]; then
     bash) tool_key=CDH_BASH_BIN ;;
     python) tool_key=CDH_PYTHON_BIN ;;
     go) tool_key=GO_BIN ;;
+    go127) tool_key=GO127_BIN ;;
     java) tool_key=JAVA_HOME; tool_suffix=/bin/java ;;
     javac) tool_key=JAVA_HOME; tool_suffix=/bin/javac ;;
     bazel) tool_key=BAZEL_BIN ;;
@@ -325,6 +326,9 @@ if [[ "$command_name" == env || "$command_name" == path ]]; then
   esac
   write_env CDH_TOOLCHAIN_ROOT "${dest}"
   write_env GO_BIN "${dest}/go126/bin/go"
+  if [[ "$command_name" == path && "$tool" == go127 ]]; then
+    write_env GO127_BIN "${dest}/go127/bin/go"
+  fi
   write_env CDH_BASH_BIN "${dest}/bash53/bin/bash"
   write_env CDH_PYTHON_BIN "${dest}/python314/bin/python3.14"
   write_env GOTOOLCHAIN local

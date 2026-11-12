@@ -1,5 +1,7 @@
 # Darwin arm64工具链
 
+可选Go`1.27.3`安装到`go127/`，供MyGo界面构建使用；默认核心Go仍为`1.26.8`。安装器的`--component go127`只处理此工具链。官方原包、大小、摘要和统一命令见[仓库说明](../README.md)，分片及版本探针由`internal/catalog/go127.go`登记。
+
 `bash53/`提供GNU Bash `5.3.15(1)-release`，保留`feicong/bash-static`的原始Mach-O arm64字节和GNU GPLv3许可证。程序使用macOS系统运行库，归档550660字节、单卷。安装器支持`install`与`check`加`--component bash53`单独处理Bash，版本、架构和原始程序摘要由`internal/catalog/bash.go`核验。
 
 本目录由仓库唯一`main`分支维护，发布macOS arm64使用的Go 1.26.8、Temurin JDK 21.0.12.1+1、LLVM 22.1.8、裁剪后的Android NDK r29 revision 29.0.14206865、Bazel 8.5.1和Rust/Cargo 1.97.1。Rust内部LLVM为22.1.6，并包含`aarch64-linux-android`标准库。

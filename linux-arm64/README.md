@@ -1,5 +1,7 @@
 # Linux arm64工具链
 
+可选Go`1.27.3`安装到`go127/`，供MyGo界面构建使用；默认核心Go仍为`1.26.8`。安装器的`--component go127`只处理此工具链。官方原包、大小、摘要和统一命令见[仓库说明](../README.md)，分片及版本探针由`internal/catalog/go127.go`登记。Linux原生运行结果须单独验证，macOS上的归档核验不代替运行。
+
 `bash53/`提供GNU Bash `5.3.15(1)-release`，保留`feicong/bash-static`的原始静态AArch64 ELF字节、GNU GPLv3和musl许可证，不依赖宿主动态链接器。归档551787字节、单卷。安装器支持`install`与`check`加`--component bash53`单独处理Bash，版本、架构和原始程序摘要由`internal/catalog/bash.go`核验。
 
 本目录由仓库唯一`main`分支维护，发布Linux arm64使用的Go 1.26.8、Temurin JDK 21.0.12.1+1、Ubuntu 26.04 LLVM 22.1.2、Android NDK r29目标输入、Bazel 8.5.1和Rust/Cargo 1.97.1。Rust内部LLVM为22.1.6，并包含`aarch64-linux-android`标准库。

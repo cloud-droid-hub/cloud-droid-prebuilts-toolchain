@@ -1,5 +1,23 @@
 # cloud-droid-prebuilts-toolchain
 
+三个宿主提供可选的Go`1.27.3`，用于Cloud Droid Studio桌面设备管理组件的MyGo构建。核心工具链仍为Go`1.26.8`。默认初始化保持核心组件集合，只有显式安装`--component go127`或构建要求该工具链的界面组件时才使用`go127/`。原包来自[Go官方发行目录](https://go.dev/dl/)，不裁剪、不改写，每包拆成两片，各片小于50,000,000字节。
+
+| 宿主 | 原包 | 字节数 | SHA-256 |
+| --- | --- | --- | --- |
+| macOS arm64 | `go1.27.3.darwin-arm64.tar.gz` | 68196737 | `dd3908cf20959d798c1e06ebe5b72213f0505ce01373b40ce3110975a6cd99c2` |
+| Linux arm64 | `go1.27.3.linux-arm64.tar.gz` | 67076044 | `a06e99309dbcbdca1a8ccd2282c3ee146e55930886e26b4f1193269587165f49` |
+| Linux amd64 | `go1.27.3.linux-amd64.tar.gz` | 70588678 | `65efbc80fdc1fa2cd2631cad5b481777a68e8725f34e89f50fc6ac714e379b40` |
+
+在主仓根执行，`<host>`取当前原生宿主目录：
+
+```sh
+toolchains/<host>/bin/cdh-toolchain install --repo toolchains/<host> --dest output/target/common/toolchains/<host> --component go127
+toolchains/<host>/bin/cdh-toolchain check --dest output/target/common/toolchains/<host> --component go127
+toolchains/use-prebuilt.sh path --tool go127
+```
+
+首次展开核对分片与完整归档摘要；安装和检查都执行实际程序架构及`go version`探针。原包保留上游源码、标准库与许可证。`go127/`与`go126/`独立安装，缺少输入时明确报错，不调用Go自动下载。
+
 三个宿主提供CPython`3.14.8`，安装到`python314/`。输入固定为Astral`python-build-standalone`的`20261009`完整`pgo+lto`归档；主仓`toolchains/python-trim/`按`python314-build-v1`生成裁剪包，移除构建对象、libpython静态副本、测试、字节码缓存和手册，保留运行库、标准库、pip、ensurepip、venv、头文件与完整上游许可证。安装器分别核对原生架构、版本、裁剪标记与关键模块实际导入，调用方不改用系统Python。
 
 | 宿主 | 裁剪tar.gz大小 | SHA256 |

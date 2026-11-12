@@ -125,6 +125,7 @@ func parseArgs(name string, args []string, stderr io.Writer, spec catalog.Spec) 
 		return "", "", spec, false, false
 	}
 	if *component != "" {
+		spec.Archives = append(spec.Archives, catalog.Optional()...)
 		found := false
 		for _, arc := range spec.Archives {
 			if arc.Dir == *component {
