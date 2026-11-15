@@ -466,10 +466,52 @@ func TestProgress(t *testing.T) {
 
 func TestHeartbeat(t *testing.T) {
 	t.Setenv("CDH_TOOLCHAIN_PROGRESS_INTERVAL", "1ms")
-	spec, repo := makeSized(t, []int{16 << 20})
-	var output bytes.Buffer
-	if err := RunTo(context.Background(), repo, filepath.Join(t.TempDir(), "tools"), spec, &output); err != nil {
+	useLocalTmp(t)
+	base := t.TempDir()
+	gate, done := filepath.Join(base, "gate"), filepath.Join(base, "done")
+	if err := syscall.Mkfifo(gate, 0o644); err != nil {
 		t.Fatal(err)
+	}
+	script := "#!/bin/sh\nif [ ! -e \"$BEAT_DONE\" ]; then\n IFS= read -r value < \"$BEAT_GATE\" || exit 71\n [ \"$value\" = release ] || exit 72\n : > \"$BEAT_DONE\"\nfi\nprintf 'go1.26.8 ready\\n'\n"
+	spec, repo := makeSpec(t, []tarItem{
+		{header: tar.Header{Name: "payload/bin/", Typeflag: tar.TypeDir, Mode: 0o755}},
+		{header: tar.Header{Name: "payload/bin/beat", Typeflag: tar.TypeReg, Mode: 0o755, Size: int64(len(script))}, data: script},
+	})
+	spec.Archives[0].Probes = []catalog.Probe{{Path: "bin/beat", Want: []string{"go1.26.8", "ready"}, Machine: catalog.Script,
+		Env: []string{"BEAT_GATE=" + gate, "BEAT_DONE=" + done}}}
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	beats, released := 0, false
+	var releaseErr error
+	output := &cancelOut{match: "state=installing"}
+	output.cancel = func() {
+		beats++
+		if released || beats < 2 {
+			return
+		}
+		file, err := os.OpenFile(gate, os.O_WRONLY|syscall.O_NONBLOCK, 0)
+		if errors.Is(err, syscall.ENXIO) {
+			return
+		}
+		if err != nil {
+			releaseErr = err
+			cancel()
+			return
+		}
+		_, err = io.WriteString(file, "release\n")
+		releaseErr = errors.Join(err, file.Close())
+		if releaseErr != nil {
+			cancel()
+			return
+		}
+		released = true
+	}
+	err := RunTo(ctx, repo, filepath.Join(base, "tools"), spec, output)
+	if releaseErr != nil {
+		t.Fatal("heartbeat probe release", releaseErr)
+	}
+	if err != nil || !released {
+		t.Fatalf("heartbeat install: %v, released=%t:\n%s", err, released, output.String())
 	}
 	if count := strings.Count(output.String(), "state=installing"); count < 2 {
 		t.Fatalf("install heartbeats=%d want at least 2:\n%s", count, output.String())
