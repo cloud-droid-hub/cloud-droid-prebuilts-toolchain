@@ -178,9 +178,7 @@ func generate(ctx context.Context, plan spec, source, dest string, log io.Writer
 	if err != nil {
 		return err
 	}
-	if err := os.Chmod(stage, 0o755); err != nil {
-		fmt.Fprintf(os.Stderr, "警告：新候选设置0755失败：%v\n", err)
-	}
+	_ = os.Chmod(stage, 0o755)
 	info, err := os.Lstat(stage)
 	if err != nil {
 		return err

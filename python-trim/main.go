@@ -258,9 +258,6 @@ func pack(ctx context.Context, spec source, name, dest string) (err error) {
 	if int(base.Sys().(*syscall.Stat_t).Uid) != os.Getuid() {
 		return errors.New("输出父目录不属于当前用户")
 	}
-	if base.Mode().Perm() != 0o755 {
-		fmt.Fprintf(os.Stderr, "警告：输出父目录模式%04o，建议0755：%s\n", base.Mode().Perm(), parent)
-	}
 	var space unix.Statfs_t
 	if err := unix.Fstatfs(fd, &space); err != nil {
 		return err
@@ -287,9 +284,7 @@ func pack(ctx context.Context, spec source, name, dest string) (err error) {
 			os.Remove(out.Name())
 		}
 	}()
-	if err := out.Chmod(0o644); err != nil {
-		fmt.Fprintf(os.Stderr, "警告：设置0644失败：%s：%v\n", out.Name(), err)
-	}
+	_ = out.Chmod(0o644)
 	hash.Reset()
 	reader, err := zstd.NewReader(io.TeeReader(in, hash))
 	if err != nil {

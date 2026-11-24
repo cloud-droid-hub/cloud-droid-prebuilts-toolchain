@@ -45,10 +45,6 @@ func refreshCopy(args []string, dest string) (returnErr error) {
 		info.Mode() != opened.Mode() || info.Mode() != named.Mode() {
 		return errors.Join(errors.New("source cache parent identity changed"), err, nameErr)
 	}
-	// 既有父目录只报告模式差异，实际读写仍由文件系统判定。
-	if opened.Mode() != os.ModeDir|0o755 {
-		fmt.Fprintf(os.Stderr, "警告:源码缓存父目录%s实际模式=%s，建议模式=0755，保留原对象继续\n", parent, opened.Mode())
-	}
 	opened, err = file.Stat()
 	named, nameErr = os.Lstat(parent)
 	if err != nil || nameErr != nil || !ownDir(opened) || !ownDir(named) ||
@@ -91,9 +87,6 @@ func refreshCopy(args []string, dest string) (returnErr error) {
 	}
 	if err != nil || !ownDir(old) {
 		return errors.Join(errors.New("source cache must be an owned ordinary directory"), err)
-	}
-	if old.Mode() != os.ModeDir|0o755 {
-		fmt.Fprintf(os.Stderr, "警告:源码缓存目录%s实际模式=%s，建议模式=0755，保留原对象继续\n", abs, old.Mode())
 	}
 	check := append([]string(nil), args...)
 	check[0] += "-check"

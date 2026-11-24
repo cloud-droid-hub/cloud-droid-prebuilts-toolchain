@@ -57,9 +57,6 @@ func openFile(name string) (*os.File, os.FileInfo, error) {
 		file.Close()
 		return nil, nil, fmt.Errorf("打开期间输入身份变化：%s", name)
 	}
-	if info.Mode().Perm() != 0o644 {
-		fmt.Fprintf(os.Stderr, "警告：已有文件权限为%04o，建议0644：%s\n", info.Mode().Perm(), name)
-	}
 	return file, info, nil
 }
 
@@ -137,9 +134,7 @@ func freeSpace(dir string) error {
 func newFile(name string) (*os.File, error) {
 	file, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
 	if err == nil {
-		if err := file.Chmod(0o644); err != nil {
-			fmt.Fprintf(os.Stderr, "警告：设置0644失败：%s：%v\n", name, err)
-		}
+		_ = file.Chmod(0o644)
 	}
 	return file, err
 }

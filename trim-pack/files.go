@@ -59,9 +59,7 @@ func safePath(name string) error {
 func newFile(name string) (*os.File, error) {
 	f, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o644)
 	if err == nil {
-		if err := f.Chmod(0o644); err != nil {
-			fmt.Fprintf(os.Stderr, "警告：设置0644失败：%s：%v\n", name, err)
-		}
+		_ = f.Chmod(0o644)
 	}
 	return f, err
 }
@@ -77,9 +75,6 @@ func snapshot(ctx context.Context, in input, root, tmp string) (_ *os.File, ret 
 	old, err := f.Stat()
 	if err != nil || !old.Mode().IsRegular() {
 		return nil, fmt.Errorf("原始源不是普通文件：%s：%v", in.Name, err)
-	}
-	if old.Mode().Perm() != 0o644 {
-		fmt.Fprintf(os.Stderr, "警告：已有源权限为%04o，建议0644：%s\n", old.Mode().Perm(), name)
 	}
 	copy, err := newFile(filepath.Join(tmp, "source.bin"))
 	if err != nil {
@@ -130,9 +125,6 @@ func openParent(dest string) (*os.File, error) {
 	if !ok || stat.Uid != uint32(os.Getuid()) {
 		f.Close()
 		return nil, errors.New("输出父目录不属于当前用户")
-	}
-	if info.Mode().Perm() != 0o755 {
-		fmt.Fprintf(os.Stderr, "警告：已有输出父目录权限为%04o，建议0755：%s\n", info.Mode().Perm(), dir)
 	}
 	return f, nil
 }

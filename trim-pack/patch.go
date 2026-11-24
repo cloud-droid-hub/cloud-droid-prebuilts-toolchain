@@ -89,9 +89,7 @@ func patcher(ctx context.Context, raw *os.File, work string) (string, error) {
 	if body, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("构建固定patchelf源码：%s：%w", body, err)
 	}
-	if err := os.Chmod(name, 0o755); err != nil {
-		fmt.Fprintf(os.Stderr, "警告：新patchelf设置0755失败：%v\n", err)
-	}
+	_ = os.Chmod(name, 0o755)
 	body, err := exec.CommandContext(ctx, name, "--version").CombinedOutput()
 	if err != nil || string(body) != "patchelf 0.18.0\n" {
 		return "", fmt.Errorf("固定patchelf身份不符：%s：%v", body, err)

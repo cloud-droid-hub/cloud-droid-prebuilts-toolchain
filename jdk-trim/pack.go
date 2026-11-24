@@ -117,16 +117,11 @@ func pack(ctx context.Context, spec plan, in, dest string) (report, error) {
 	if !ok || int(stat.Uid) != os.Getuid() {
 		return rep, errors.New("输出父目录不属于当前用户")
 	}
-	if rootInfo.Mode().Perm() != 0o755 {
-		fmt.Fprintf(os.Stderr, "警告：已有目录权限为%04o，建议0755：%s\n", rootInfo.Mode().Perm(), parent)
-	}
 	stage, err := os.MkdirTemp(parent, "jdk-trim-")
 	if err != nil {
 		return rep, err
 	}
-	if err := os.Chmod(stage, 0o755); err != nil {
-		fmt.Fprintf(os.Stderr, "警告：设置0755失败：%s：%v\n", stage, err)
-	}
+	_ = os.Chmod(stage, 0o755)
 	stageInfo, err := os.Lstat(stage)
 	if err != nil {
 		return rep, err

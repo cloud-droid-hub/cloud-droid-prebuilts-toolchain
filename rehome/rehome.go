@@ -343,9 +343,7 @@ func makeStage(root *os.File) (*os.File, string, error) {
 	}
 	file, err := openDir(root, name)
 	if err == nil {
-		if chmodErr := file.Chmod(0o755); chmodErr != nil {
-			fmt.Fprintf(os.Stderr, "warning: new migration directory mode could not be set: %s: %v\n", name, chmodErr)
-		}
+		_ = file.Chmod(0o755)
 	}
 	return file, name, err
 }

@@ -23,9 +23,7 @@ func TestMain(m *testing.M) { os.Exit(workpath.Run(m)) }
 func testDir(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
-	if err := os.Chmod(dir, 0o755); err != nil {
-		t.Logf("警告：设置测试目录权限：%v", err)
-	}
+	_ = os.Chmod(dir, 0o755)
 	return dir
 }
 

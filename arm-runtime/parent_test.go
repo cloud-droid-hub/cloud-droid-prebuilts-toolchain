@@ -125,14 +125,8 @@ func testCacheModes(t *testing.T, parentMode bool) {
 					if callErr != nil && !blocked {
 						t.Fatalf("owned directory rejected: %v", callErr)
 					}
-					if mode != 0o755 {
-						if !strings.Contains(warning, changed) || !strings.Contains(warning, "实际模式="+first.Mode().String()) ||
-							!strings.Contains(warning, "建议模式=0755") {
-							t.Errorf("mode warning lacks path, actual or suggested mode: %q", warning)
-						}
-						t.Logf("mode_warning=%s", strings.SplitN(warning, "\n", 2)[0])
-					} else if strings.Contains(warning, "警告:") {
-						t.Errorf("normal mode reported a warning: %q", warning)
+					if strings.Contains(warning, "警告:") || strings.Contains(warning, "建议模式") {
+						t.Errorf("unexpected permission mode warning: %q", warning)
 					}
 					after, err := os.Lstat(note)
 					got, readErr := os.ReadFile(note)
@@ -360,9 +354,8 @@ func parentReadOnly(t *testing.T, kind string, bad bool) {
 		!strings.Contains(callErr.Error(), filepath.Base(dest)+".copy.lock") {
 		t.Errorf("real parent write failure not preserved: %v", callErr)
 	}
-	if !strings.Contains(warning, parent) || !strings.Contains(warning, "实际模式="+before.Mode().String()) ||
-		!strings.Contains(warning, "建议模式=0755") {
-		t.Errorf("read-only mode warning lacks context: %q", warning)
+	if strings.Contains(warning, "警告:") || strings.Contains(warning, "建议模式") {
+		t.Errorf("unexpected read-only mode warning: %q", warning)
 	}
 	after, err := os.Lstat(parent)
 	if err != nil {
