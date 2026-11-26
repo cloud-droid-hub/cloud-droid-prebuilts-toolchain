@@ -19,6 +19,10 @@ case "$dest" in
 esac
 installer="$repo/bin/cdh-toolchain"
 if [ ! -d "$repo" ] && [ -e "$base/.git" ]; then
+	if [ "${CDH_INIT_DRY_RUN:-0}" = "1" ]; then
+		printf '预演模式不自动初始化工具链子模块：%s\n' "$repo" >&2
+		exit 2
+	fi
 	git -C "$base" submodule update --init --depth 1 -- toolchains >&2
 fi
 if [ ! -x "$installer" ]; then
@@ -26,6 +30,10 @@ if [ ! -x "$installer" ]; then
 	exit 2
 fi
 if ! "$installer" check --dest "$dest" --component bash53 >/dev/null 2>&1; then
+	if [ "${CDH_INIT_DRY_RUN:-0}" = "1" ]; then
+		printf '预演模式不展开安装Bash工具链，请先安装或使用已就绪工具链：%s\n' "$dest" >&2
+		exit 2
+	fi
 	"$installer" install --repo "$repo" --dest "$dest" --component bash53 >&2
 fi
 CDH_BASH_BIN="$dest/bash53/bin/bash"

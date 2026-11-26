@@ -102,3 +102,47 @@ func TestBashCold(t *testing.T) {
 		t.Fatalf("未知组件未返回2:%v", err)
 	}
 }
+
+func TestBashDryRun(t *testing.T) {
+	root, err := filepath.Abs("..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	host := runtime.GOOS + "-" + runtime.GOARCH
+	work := t.TempDir()
+	repo := "toolchains/" + host
+	for _, name := range []string{"toolchains/bash.sh", repo + "/bin/cdh-toolchain",
+		repo + "/payload/bash53/bash-5.3.15-" + host + ".tar.gz.part-000"} {
+		data, err := os.ReadFile(filepath.Join(root, name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		path := filepath.Join(work, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		mode := os.FileMode(0o644)
+		if strings.HasSuffix(name, "/bash.sh") || strings.HasSuffix(name, "/cdh-toolchain") {
+			mode = 0o755
+		}
+		if err := os.WriteFile(path, data, mode); err != nil {
+			t.Fatal(err)
+		}
+	}
+	dest := filepath.Join(work, "output", "target", "common", "toolchains", host)
+	cmd := exec.Command(filepath.Join(work, "toolchains/bash.sh"), "-c", "echo ok")
+	for _, entry := range os.Environ() {
+		key, _, _ := strings.Cut(entry, "=")
+		if key != "CDH_TOOLCHAIN_ROOT" && key != "CDH_BASH_BIN" && key != "CDH_BASH_RUN" && key != "CDH_INIT_DRY_RUN" {
+			cmd.Env = append(cmd.Env, entry)
+		}
+	}
+	cmd.Env = append(cmd.Env, "CDH_TOOLCHAIN_ROOT="+dest, "CDH_INIT_DRY_RUN=1")
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		t.Fatalf("预演模式未拒绝冷启动安装Bash:%s", out)
+	}
+	if _, statErr := os.Stat(filepath.Join(dest, "bash53")); !os.IsNotExist(statErr) {
+		t.Fatalf("预演模式仍展开安装了bash53:%v", statErr)
+	}
+}
