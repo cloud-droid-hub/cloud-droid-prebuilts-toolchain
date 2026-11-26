@@ -17,9 +17,17 @@ case "$dest" in
 	/*) ;;
 	*) printf '%s\n' 'Bash工具链根必须使用绝对路径' >&2; exit 2 ;;
 esac
+dry_run="${CDH_INIT_DRY_RUN:-0}"
+if [ "$dry_run" != "1" ]; then
+	for arg in "$@"; do
+		case "$arg" in
+			--dry-run|--print-plan) dry_run=1; break ;;
+		esac
+	done
+fi
 installer="$repo/bin/cdh-toolchain"
 if [ ! -d "$repo" ] && [ -e "$base/.git" ]; then
-	if [ "${CDH_INIT_DRY_RUN:-0}" = "1" ]; then
+	if [ "$dry_run" = "1" ]; then
 		printf '预演模式不自动初始化工具链子模块：%s\n' "$repo" >&2
 		exit 2
 	fi
@@ -30,7 +38,7 @@ if [ ! -x "$installer" ]; then
 	exit 2
 fi
 if ! "$installer" check --dest "$dest" --component bash53 >/dev/null 2>&1; then
-	if [ "${CDH_INIT_DRY_RUN:-0}" = "1" ]; then
+	if [ "$dry_run" = "1" ]; then
 		printf '预演模式不展开安装Bash工具链，请先安装或使用已就绪工具链：%s\n' "$dest" >&2
 		exit 2
 	fi
