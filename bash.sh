@@ -18,10 +18,29 @@ case "$dest" in
 	*) printf '%s\n' 'Bash工具链根必须使用绝对路径' >&2; exit 2 ;;
 esac
 dry_run="${CDH_INIT_DRY_RUN:-0}"
+case "${JUST_DRY_RUN:-}" in
+	1|true|TRUE|yes|YES) dry_run=1 ;;
+esac
 if [ "$dry_run" != "1" ]; then
+	is_just=0
+	case "${1:-}" in
+		*/cwd-just.sh|cwd-just.sh|just|*/just) is_just=1 ;;
+	esac
 	for arg in "$@"; do
 		case "$arg" in
+			--) break ;;
 			--dry-run|--print-plan) dry_run=1; break ;;
+			-n)
+				if [ "$is_just" = "1" ]; then dry_run=1; break; fi
+				;;
+			-[a-zA-Z]*n*)
+				if [ "$is_just" = "1" ]; then
+					case "$arg" in
+						--*) ;;
+						*) dry_run=1; break ;;
+					esac
+				fi
+				;;
 		esac
 	done
 fi
